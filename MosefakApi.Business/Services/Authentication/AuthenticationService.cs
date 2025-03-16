@@ -230,7 +230,6 @@
                 linkTitle: "Activate Account");
 
             await _emailSender.SendEmailAsync(appUser.Email!, "✅ Mosefak: Confirmation Email", body);
-
         }
 
         private async Task SendResetPasswordEmail(AppUser user, string code)

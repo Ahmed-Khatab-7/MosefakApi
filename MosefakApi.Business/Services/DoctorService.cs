@@ -1,6 +1,4 @@
-﻿using static MosefakApp.Infrastructure.constants.Permissions;
-
-namespace MosefakApi.Business.Services
+﻿namespace MosefakApi.Business.Services
 {
     public class DoctorService : IDoctorService
     {
@@ -656,6 +654,71 @@ namespace MosefakApi.Business.Services
             };
         }
 
+        public async Task<PaginatedResponse<DoctorResponse>> SearchDoctorsBySpecialityAsync(DoctorSearchBySpecialityCategoryFilter filter, int pageNumber = 1, int pageSize = 10)
+        {
+
+            (var specializations, var totalCount) = await _unitOfWork.Repository<Specialization>()
+                .GetAllAsync(s => s.Category == filter.Category,
+                query =>
+                query.Include(x => x.Doctor)
+                .ThenInclude(x=> x.Experiences),
+                pageNumber, pageSize);
+
+            var totalPages = (int)((double)totalCount / pageSize);
+
+            if (!specializations.Any())
+                return new PaginatedResponse<DoctorResponse>
+                {
+                    CurrentPage = pageNumber,
+                    Data = [],
+                    PageSize = pageSize,
+                    TotalPages = totalPages
+                };
+
+            // Extract unique user IDs
+            var userIds = specializations.Select(s => s.Doctor.AppUserId).Distinct().ToList();
+
+            // Fetch user details in one query and store in a dictionary
+            var userDictionary = await _userManager.Users
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new
+                {
+                    u.Id,
+                    FullName = $"{u.FirstName} {u.LastName}",
+                    ImagePath = _baseUrl + (!string.IsNullOrWhiteSpace(u.ImagePath) ? u.ImagePath : "default.jpg")
+                })
+                .ToDictionaryAsync(u => u.Id);
+
+          
+            // Map the final result
+            var doctorResponse = new List<DoctorResponse>();
+
+            foreach (var res in specializations)
+            {
+                doctorResponse.Add(new DoctorResponse
+                {
+                    Id = res.Doctor.Id.ToString(),
+                    FullName = userDictionary[res.Doctor.AppUserId].FullName,
+                    ImagePath = userDictionary[res.Doctor.AppUserId].ImagePath,
+                    TotalYearsOfExperience = res.Doctor.TotalYearsOfExperience,
+                    NumberOfReviews = res.Doctor.NumberOfReviews,
+                    Specializations = res.Doctor.Specializations.Select(s => new SpecializationResponse
+                    {
+                        Id = s.Id.ToString(),
+                        Name = s.Name,
+                        Category = s.Category
+                    }).ToList()
+                });
+            }
+
+            return new PaginatedResponse<DoctorResponse>
+            {
+                Data = doctorResponse,
+                CurrentPage = pageNumber,
+                PageSize = pageSize,
+                TotalPages = totalPages
+            };
+        }
 
         public async Task<PaginatedResponse<AppointmentDto>> GetUpcomingAppointmentsAsync(int doctorId, int pageNumber = 1, int pageSize = 10)
         {

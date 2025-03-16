@@ -77,6 +77,33 @@
             return Ok(query);
         }
 
+        // ✅ Search doctors
+        [HttpPost("search-by-speciality")]
+      //  [HasPermission(Permissions.Doctors.SearchBySpeciality)]
+        public async Task<ActionResult<PaginatedResponse<DoctorResponse>>> SearchDoctorsBySpecialityAsync(
+            [FromBody] DoctorSearchBySpecialityCategoryFilter filter,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var query = await _doctorService.SearchDoctorsBySpecialityAsync(filter, pageNumber, pageSize);
+
+            if (query?.Data != null)
+            {
+                foreach (var doc in query.Data)
+                {
+                    doc.Id = ProtectId(doc.Id);
+                    if (doc.Specializations != null)
+                    {
+                        foreach (var s in doc.Specializations)
+                        {
+                            s.Id = ProtectId(s.Id);
+                        }
+                    }
+                }
+            }
+
+            return Ok(query);
+        }
 
         // ✅ Get doctor profile (Authenticated Doctor)
         [HttpGet("profile")]

@@ -5,6 +5,7 @@
         Task<IList<T>> GetAllAsync(Expression<Func<T, bool>> expression);
         Task<(IList<T> items,int totalCount)> GetAllAsync(int pageNumber = 1, int pageSize = 10);
         Task<(IList<T> items, int totalCount)> GetAllAsync(Func<IQueryable<T>, IQueryable<T>> include = null, int pageNumber = 1, int pageSize = 10);
+        Task<(IList<T> items, int totalCount)> GetAllAsync(Expression<Func<T, bool>> expression, Func<IQueryable<T>, IQueryable<T>>[] includes = null, int pageNumber = 1, int pageSize = 10);
         Task<(IList<T> items,int totalCount)> GetAllAsync(Expression<Func<T,bool>> expression, Func<IQueryable<T>, IQueryable<T>> include = null, int pageNumber = 1, int pageSize = 10);
         Task<(IList<T> items, int totalCount)> GetAllAsync(Expression<Func<T, bool>> expression, Func<IQueryable<T>, IQueryable<T>> include = null, Expression<Func<T, object>> sortBy = null,bool isDes = false, int pageNumber = 1, int pageSize = 10);
         Task<T> GetByIdAsync(object id);

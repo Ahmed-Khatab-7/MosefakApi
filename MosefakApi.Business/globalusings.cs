@@ -3,6 +3,7 @@ global using Stripe;
 global using MailKit.Net.Smtp;
 global using MailKit.Security;
 global using Microsoft.AspNetCore.DataProtection;
+global using static MosefakApp.Infrastructure.constants.Permissions;
 global using MosefakApp.Core.Dtos.Notification;
 global using MosefakApp.Core.Dtos.Pagination;
 global using MosefakApp.Core.Dtos.Review.Requests;

@@ -69,7 +69,10 @@
                     Permissions.Clinics.Edit, Permissions.Clinics.Remove,
 
                     // Reviews
-                    Permissions.Reviews.View, Permissions.Reviews.Delete
+                    Permissions.Reviews.View, Permissions.Reviews.Delete,
+
+                    // Search
+                    Permissions.Doctors.SearchBySpeciality, Permissions.Doctors.Search,
                 }
             },
             {
@@ -110,7 +113,10 @@
 
                     // Appointment Types Management
                     Permissions.AppointmentTypes.View, Permissions.AppointmentTypes.Add,
-                    Permissions.AppointmentTypes.Edit, Permissions.AppointmentTypes.Delete
+                    Permissions.AppointmentTypes.Edit, Permissions.AppointmentTypes.Delete,
+
+                    // Search
+                    Permissions.Doctors.SearchBySpeciality, Permissions.Doctors.Search,
                 }
             },
             {
@@ -120,6 +126,9 @@
                     Permissions.Patients.ViewProfile, Permissions.Patients.EditProfile,
                     Permissions.Patients.UploadProfileImage,
 
+                    // Search
+                    Permissions.Doctors.SearchBySpeciality, Permissions.Doctors.Search,
+                    
                     // Appointments Management
                     Permissions.Appointments.ViewPatientAppointments, Permissions.Appointments.View,
                     Permissions.Appointments.Book, Permissions.Appointments.CancelByPatient,

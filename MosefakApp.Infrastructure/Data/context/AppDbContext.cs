@@ -65,12 +65,9 @@
             var entries = ChangeTracker.Entries<BaseEntity>();
 
             var CurrentUserIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier);
+            int? CurrentUserId = CurrentUserIdClaim != null && int.TryParse(CurrentUserIdClaim.Value, out var parsedUserId) ? parsedUserId : null;
 
-            int? CurrentUserId = null;
-            if (CurrentUserIdClaim != null && int.TryParse(CurrentUserIdClaim.Value, out var parsedUserId))
-            {
-                CurrentUserId = parsedUserId;
-            }
+            List<Task> doctorUpdateTasks = new();
 
             foreach (var entryEntity in entries)
             {
@@ -78,29 +75,28 @@
                 {
                     if (entryEntity.State == EntityState.Added)
                     {
-                        entryEntity.Property(x => x.CreatedAt).CurrentValue = DateTime.UtcNow;
+                        entryEntity.Property(x => x.CreatedAt).CurrentValue = DateTimeOffset.UtcNow;
                         entryEntity.Property(x => x.CreatedByUserId).CurrentValue = CurrentUserId.Value;
 
-                        // ✅ Check if it's a new Review, then increment the Doctor's NumberOfReviews
                         if (entryEntity.Entity is Review review)
                         {
-                            await UpdateDoctorReviewCount(review.AppUserId, 1);
+                            doctorUpdateTasks.Add(UpdateDoctorReviewCount(review.DoctorId, 1));
                         }
                     }
                     else if (entryEntity.State == EntityState.Modified)
                     {
-                        if (entryEntity.Properties.Any(p => p.IsModified)) //  Only update if properties are modified
+                        if (entryEntity.Properties.Any(p => p.IsModified))
                         {
                             if (entryEntity.Property(x => x.FirstUpdatedTime).CurrentValue is null &&
-                            entryEntity.Property(x => x.FirstUpdatedByUserId).CurrentValue is null)
+                                entryEntity.Property(x => x.FirstUpdatedByUserId).CurrentValue is null)
                             {
                                 entryEntity.Property(x => x.FirstUpdatedByUserId).CurrentValue = CurrentUserId.Value;
-                                entryEntity.Property(x => x.FirstUpdatedTime).CurrentValue = DateTime.UtcNow;
+                                entryEntity.Property(x => x.FirstUpdatedTime).CurrentValue = DateTimeOffset.UtcNow;
                             }
                             else
                             {
                                 entryEntity.Property(x => x.LastUpdatedByUserId).CurrentValue = CurrentUserId.Value;
-                                entryEntity.Property(x => x.LastUpdatedTime).CurrentValue = DateTime.UtcNow;
+                                entryEntity.Property(x => x.LastUpdatedTime).CurrentValue = DateTimeOffset.UtcNow;
                             }
                         }
                     }
@@ -109,25 +105,25 @@
                         entryEntity.State = EntityState.Modified;
                         entryEntity.Entity.MarkAsDeleted(CurrentUserId.Value);
 
-                        // ✅ Check if a Review is being deleted, then decrement the Doctor's NumberOfReviews
                         if (entryEntity.Entity is Review review)
                         {
-                            await UpdateDoctorReviewCount(review.AppUserId, -1);
+                            doctorUpdateTasks.Add(UpdateDoctorReviewCount(review.DoctorId, -1));
                         }
                     }
                 }
             }
 
+            await Task.WhenAll(doctorUpdateTasks); // Ensure doctor updates are completed first
             return await base.SaveChangesAsync(cancellationToken);
         }
 
         private async Task UpdateDoctorReviewCount(int doctorId, int change)
         {
-            var doctor = await Set<Doctor>().FirstOrDefaultAsync(d => d.Id == doctorId);
+            var doctor = await Doctors.FindAsync(doctorId); // More optimized for PK lookup
+
             if (doctor is not null)
             {
                 doctor.NumberOfReviews += change;
-                await SaveChangesAsync(); // Ensure the update is persisted
             }
         }
 

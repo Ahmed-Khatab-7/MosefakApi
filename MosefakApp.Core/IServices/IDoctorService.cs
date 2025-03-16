@@ -17,6 +17,7 @@
         Task<DoctorDetail> GetDoctorById(int doctorId); // Pass doctorId explicitly not claims
         Task<List<DoctorResponse>?> TopTenDoctors();
         Task<PaginatedResponse<DoctorResponse>> SearchDoctorsAsync(DoctorSearchFilter filter, int pageNumber = 1, int pageSize = 10);
+        Task<PaginatedResponse<DoctorResponse>> SearchDoctorsBySpecialityAsync(DoctorSearchBySpecialityCategoryFilter filter, int pageNumber = 1, int pageSize = 10);
 
         // 🔹 Doctor's Appointments
         Task<PaginatedResponse<AppointmentDto>> GetUpcomingAppointmentsAsync(int doctorId, int pageNumber = 1, int pageSize = 10);

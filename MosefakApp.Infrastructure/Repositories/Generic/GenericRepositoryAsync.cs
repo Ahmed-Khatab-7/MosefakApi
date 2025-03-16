@@ -1,4 +1,6 @@
-﻿namespace MosefakApp.Infrastructure.Repositories.Generic
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace MosefakApp.Infrastructure.Repositories.Generic
 {
     public class GenericRepositoryAsync<T> : IGenericRepositoryAsync<T> where T : class
     {
@@ -30,6 +32,37 @@
 
         public async Task<(IList<T> items, int totalCount)> GetAllAsync(Func<IQueryable<T>, IQueryable<T>>? include = null, int pageNumber = 1, int pageSize = 10)
             => await GetPagedDataAsync(include?.Invoke(_entity) ?? _entity, pageNumber, pageSize);
+
+        public async Task<(IList<T> items, int totalCount)> GetAllAsync(
+        Expression<Func<T, bool>> expression,
+        Func<IQueryable<T>, IQueryable<T>>[]? includes = null,
+        int pageNumber = 1,
+        int pageSize = 10)
+        {
+            IQueryable<T> query = _entity.Where(expression); 
+
+            if (includes is not null)
+            {
+                foreach (var include in includes)
+                {
+                    query = include(query);
+                }
+            }
+
+            // Get total count before applying pagination
+            int totalCount = await query.CountAsync();
+
+            pageNumber = Math.Max(1, pageNumber); // Ensure positive page number
+
+            // Apply pagination
+            var items = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
+
 
         public async Task<(IList<T> items, int totalCount)> GetAllAsync(Expression<Func<T, bool>> expression, Func<IQueryable<T>, IQueryable<T>>? include = null, int pageNumber = 1, int pageSize = 10)
             => await GetPagedDataAsync((include?.Invoke(_entity) ?? _entity).Where(expression), pageNumber, pageSize);
