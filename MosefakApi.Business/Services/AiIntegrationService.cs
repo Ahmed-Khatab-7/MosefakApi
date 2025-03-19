@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Json;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MosefakApi.Business.Services;
+﻿namespace MosefakApi.Business.Services;
 public class AiIntegrationService : IAiIntegrationService
 {
     private readonly HttpClient _httpClient;
@@ -15,12 +8,18 @@ public class AiIntegrationService : IAiIntegrationService
         _httpClient = httpClient;
     }
 
-    public async Task<string> AskAiAsync(string question)
+    public async Task<string> AskAiAsync(string question, string token)
     {
         var payload = new { question };
         var endpoint = "https://ai-medical-assistant-production.up.railway.app/ask";
 
-        var response = await _httpClient.PostAsJsonAsync(endpoint, payload);
+        var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        {
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _httpClient.SendAsync(request);
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();
@@ -29,10 +28,5 @@ public class AiIntegrationService : IAiIntegrationService
 
         var aiReply = await response.Content.ReadFromJsonAsync<AiResponse>();
         return aiReply?.Response ?? "No response from AI";
-    }
-
-    private class AiResponse
-    {
-        public string Response { get; set; } = null!;
     }
 }

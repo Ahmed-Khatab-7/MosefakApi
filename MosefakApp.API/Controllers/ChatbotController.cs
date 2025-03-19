@@ -1,9 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using MosefakApp.Core.Dtos.ChatBot.Requests;
-using MosefakApp.Core.Dtos.ChatBot.Responses;
-
-namespace MosefakApp.API.Controllers;
+﻿namespace MosefakApp.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 public class ChatbotController : ControllerBase
@@ -16,13 +11,16 @@ public class ChatbotController : ControllerBase
     }
 
     [HttpPost("ask")]
-    [HasPermission(Permissions.Chatbot.Ask)]
+   [HasPermission(Permissions.Chatbot.Ask)]
     public async Task<IActionResult> Ask([FromBody] ChatRequestDto dto)
     {
         // FluentValidation will validate ChatRequestDto
         try
         {
-            var aiStringReply = await _aiService.AskAiAsync(dto.Question);
+            var token = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+            // Pass the token to the AI service
+            var aiStringReply = await _aiService.AskAiAsync(dto.Question, token);
 
             var result = new ChatResponseDto
             {

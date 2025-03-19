@@ -1,11 +1,13 @@
 ﻿global using AutoMapper;
 global using Stripe;
 global using MailKit.Net.Smtp;
+global using System.Net.Http.Json;
 global using MailKit.Security;
 global using Microsoft.AspNetCore.DataProtection;
 global using static MosefakApp.Infrastructure.constants.Permissions;
 global using MosefakApp.Core.Dtos.Notification;
 global using MosefakApp.Core.Dtos.Pagination;
+global using MosefakApp.Core.Dtos.ChatBot.Responses;
 global using MosefakApp.Core.Dtos.Review.Requests;
 global using Microsoft.AspNetCore.Hosting;
 global using Microsoft.AspNetCore.Http;

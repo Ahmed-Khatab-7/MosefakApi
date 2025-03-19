@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MosefakApp.Core.Dtos.ChatBot.Responses;
+﻿namespace MosefakApp.Core.Dtos.ChatBot.Responses;
 public class ChatResponseDto
 {
     public bool Success { get; set; }

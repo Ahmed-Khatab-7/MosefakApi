@@ -7,6 +7,8 @@ global using Microsoft.AspNetCore.Authorization;
 global using MosefakApi.DependencyInjection;
 global using MosefakApp.API.Extensions;
 global using MosefakApp.API.Filters.Authentication;
+global using MosefakApp.Core.Dtos.ChatBot.Requests;
+global using MosefakApp.Core.Dtos.ChatBot.Responses;
 global using MosefakApp.Core.Dtos.AppointmentType.Requests;
 global using MosefakApp.Core.Dtos.ContactUs;
 global using System.Text.Json.Serialization;
