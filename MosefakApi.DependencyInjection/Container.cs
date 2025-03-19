@@ -15,6 +15,8 @@
 
             //  services.RegisterRedisConfig(configuration);
 
+            
+
             // register Identity
 
             services.RegisterIdentityConnectionString(configuration);
@@ -39,6 +41,8 @@
             services.RegisterConcurrencyRateLimitingConfig();
 
             services.RegisterOptionsPatternConfig(configuration);
+
+            services.AddHttpClient<IAiIntegrationService, AiIntegrationService>();
 
             return services;
         }

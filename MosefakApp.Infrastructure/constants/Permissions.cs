@@ -124,6 +124,11 @@
             public const string Remove = "Permissions.Clinics.RemoveClinic";
         }
 
+        public static class Chatbot
+        {
+            public const string Ask = "Permissions.Chatbot.Ask";
+        }
+
         public static class Reviews
         {
             public const string View = "Permissions.Reviews.View"; 

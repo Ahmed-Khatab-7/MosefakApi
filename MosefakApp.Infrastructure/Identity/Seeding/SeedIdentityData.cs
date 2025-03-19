@@ -68,6 +68,9 @@
                     Permissions.Clinics.View, Permissions.Clinics.Create,
                     Permissions.Clinics.Edit, Permissions.Clinics.Remove,
 
+                    // Chatbot
+                    Permissions.Chatbot.Ask,
+
                     // Reviews
                     Permissions.Reviews.View, Permissions.Reviews.Delete,
 
@@ -111,6 +114,9 @@
                     Permissions.Clinics.View, Permissions.Clinics.Create,
                     Permissions.Clinics.Edit, Permissions.Clinics.Remove,
 
+                    // Chatbot
+                    Permissions.Chatbot.Ask,
+
                     // Appointment Types Management
                     Permissions.AppointmentTypes.View, Permissions.AppointmentTypes.Add,
                     Permissions.AppointmentTypes.Edit, Permissions.AppointmentTypes.Delete,
@@ -133,6 +139,9 @@
                     Permissions.Appointments.ViewPatientAppointments, Permissions.Appointments.View,
                     Permissions.Appointments.Book, Permissions.Appointments.CancelByPatient,
                     Permissions.Appointments.CreatePaymentIntent, Permissions.Appointments.ConfirmPayment,
+
+                    // Chatbot
+                    Permissions.Chatbot.Ask,
 
                     // Reviews Management
                     Permissions.Reviews.View, Permissions.Reviews.Create, Permissions.Reviews.Edit, Permissions.Reviews.Delete
