@@ -1,4 +1,6 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+﻿using Microsoft.AspNetCore.Authentication.Cookies;
+
+var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddUserSecrets<Program>(); // 👈 Load from User Secrets
 
 // Add services to the container.
@@ -40,6 +42,21 @@ builder.Services.AddSwaggerServices();
 await builder.Services.Seeding();
 
 builder.Services.AddAuthentication(builder.Configuration);
+
+builder.Services.AddAuthentication(options =>
+{
+    // Use cookie for storing user info after sign in
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+})
+.AddCookie()
+.AddGoogle(googleOptions =>
+{
+    googleOptions.ClientId = builder.Configuration["Authentication:Google:ClientId"];
+    googleOptions.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+    // If you want a custom callback:
+    // googleOptions.CallbackPath = new PathString("/api/account/google-callback");
+});
 
 #region For Validation Error
 

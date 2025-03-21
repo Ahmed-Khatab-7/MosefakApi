@@ -75,7 +75,7 @@
                 FirstName = registerRequest.FirstName,
                 LastName = registerRequest.LastName,
                 Email = registerRequest.Email,
-                UserName = registerRequest.Email.Split('@')[0], // Bilal48@gmail.com  --> Bilal48
+                UserName = registerRequest.Email.Split('@')[0],
                 PhoneNumber = registerRequest.PhoneNumber,
             };
 
@@ -86,7 +86,6 @@
                 if (registerRequest.IsDoctor)
                 {
                     await _userManager.AddToRoleAsync(appUser, DefaultRole.PendingDoctor);
-                    // ❌ Do NOT create Doctor record yet - will be created later in profile completion
                 }
                 else
                 {
@@ -95,15 +94,24 @@
 
                 var code = await _userManager.GenerateEmailConfirmationTokenAsync(appUser);
                 code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-
-                _logger.LogInformation(code); // will remove it before production
+                _logger.LogInformation(code);
 
                 await SendConfirmationEmail(appUser, code);
+
+                // Added: wait 10 minutes; if user still not confirmed, delete them
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(10));
+                    var freshUser = await _userManager.FindByIdAsync(appUser.Id.ToString());
+                    if (freshUser != null && !freshUser.EmailConfirmed)
+                    {
+                        await _userManager.DeleteAsync(freshUser);
+                    }
+                });
             }
             else
             {
                 var errors = result.Errors.Select(x => x.Description).ToList();
-
                 throw new BadRequest($"{string.Join(",", errors)}");
             }
         }
