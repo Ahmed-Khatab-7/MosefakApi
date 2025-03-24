@@ -224,17 +224,15 @@
 
         private async Task SendConfirmationEmail(AppUser appUser, string code)
         {
-            string? imageFromGoogle = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTc9APxkj0xClmrU3PpMZglHQkx446nQPG6lA&s";
-
             var origin = _HttpContextAccessor?.HttpContext?.Request.Headers.Origin;
             var imagePath = $"{origin}/images/198340114.jpeg";
 
             var body = await _emailBuilder.GenerateEmailBody(
                 templateName: "emailTamplate.html",
-                imageUrl: imageFromGoogle,
+                imageUrl: imagePath,
                 header: $"Hi, {appUser.FirstName}",
                 TextBody: "Please Confirm your email",
-                link: $"{origin}/api/Authentication/confirm-email?userId={appUser.Id}&Code={code}", // will be Url that belong component(confirm-email component) that when open (OnInit) will send this Url and go to url that belong it..
+                link: $"{origin}/redirect/confirm-email?userId={appUser.Id}&code={code}",
                 linkTitle: "Activate Account");
 
             await _emailSender.SendEmailAsync(appUser.Email!, "✅ Mosefak: Confirmation Email", body);
@@ -242,23 +240,21 @@
 
         private async Task SendResetPasswordEmail(AppUser user, string code)
         {
-            // Full URL for image
-            string? imageFromGoogle = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTc9APxkj0xClmrU3PpMZglHQkx446nQPG6lA&s";
-
             var origin = _HttpContextAccessor.HttpContext?.Request.Headers.Origin;
             var imagePath = $"{origin}/images/198340114.jpeg";
 
             var body = await _emailBuilder.GenerateEmailBody(
                 templateName: "forgetPasswordTemplate.html",
-                imageUrl: imageFromGoogle,
+                imageUrl: imagePath,
                 header: $"Hi, {user.FirstName}",
                 TextBody: "We received a request to reset your password. Click the button below to create a new password:",
-                link: $"{origin}/reset-password?code={code}", // will be "reset-password component url and sent to it code as query string" and after fill fields(email,pass,conf) then click on reset will call reset-password action and send 4 info (email,code,pass,confpass)
+                link: $"{origin}/redirect/reset-password?code={code}",
                 linkTitle: "Reset"
                 );
 
             await _emailSender.SendEmailAsync(user.Email!, "✅ Mosefak: Reset Your Password", body);
         }
+
         private LoginResponse GetLoginResponse(AppUser user, JwtProviderResponse response)
         {
 

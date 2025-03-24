@@ -79,7 +79,7 @@
 
         // ✅ Search doctors
         [HttpPost("search-by-speciality")]
-      //  [HasPermission(Permissions.Doctors.SearchBySpeciality)]
+        [HasPermission(Permissions.Doctors.SearchBySpeciality)]
         public async Task<ActionResult<PaginatedResponse<DoctorResponse>>> SearchDoctorsBySpecialityAsync(
             [FromBody] DoctorSearchBySpecialityCategoryFilter filter,
             [FromQuery] int pageNumber = 1,
