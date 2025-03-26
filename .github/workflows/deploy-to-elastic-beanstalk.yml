@@ -1,4 +1,4 @@
-name: Deploy to AWS Elastic Beanstalk (.NET 9)
+name: Deploy to AWS Elastic Beanstalk
 
 on:
   push:
@@ -57,7 +57,7 @@ jobs:
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           application_name: ${{ secrets.EB_APPLICATION_NAME }}
           environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}
-          version_label: "v${{ github.run_number }}-${{ github.sha }}"
+          version_label: "v-${{ github.run_number }}-${{ github.sha | slice: 0, 7 }}"
           region: ${{ secrets.AWS_REGION }}
           deployment_package: deploy.zip
           use_existing_version_if_available: true
