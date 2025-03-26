@@ -34,8 +34,8 @@ jobs:
       - name: Copy configuration files
         run: |
           mkdir -p ./publish/.ebextensions
-          cp -r .ebextensions/* ./publish/.ebextensions/
-          cp web.config ./publish/
+          cp -r .ebextensions/* ./publish/.ebextensions/ || echo "No .ebextensions directory found"
+          cp web.config ./publish/ || echo "No web.config found"
           cp Procfile ./publish/ || echo "No Procfile found"
       
       - name: Generate deployment package
@@ -57,8 +57,9 @@ jobs:
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           application_name: ${{ secrets.EB_APPLICATION_NAME }}
           environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}
-          version_label: "net9-${{ github.sha }}"
+          version_label: "v${{ github.run_number }}-${{ github.sha }}"
           region: ${{ secrets.AWS_REGION }}
           deployment_package: deploy.zip
+          use_existing_version_if_available: true
           wait_for_deployment: true
           wait_for_environment_recovery: 300
