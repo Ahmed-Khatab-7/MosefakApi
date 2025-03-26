@@ -3,7 +3,7 @@ name: Deploy to AWS Elastic Beanstalk
 on:
   push:
     branches:
-      - main  # Change this if your main branch has a different name
+      - main
 
 permissions:
   contents: read
@@ -20,7 +20,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '9.0.x'  # Matches your project's .NET 9.0 version
+          dotnet-version: '6.0.x'  # Use a more compatible version for building
       
       - name: Restore dependencies
         run: dotnet restore
@@ -30,6 +30,12 @@ jobs:
       
       - name: Publish project
         run: dotnet publish --configuration Release --output ./publish
+      
+      - name: Copy configuration files
+        run: |
+          cp -r .ebextensions ./publish/
+          cp web.config ./publish/
+          cp Procfile ./publish/ || echo "No Procfile found"
       
       - name: Generate deployment package
         run: |
