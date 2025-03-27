@@ -1,44 +1,40 @@
-# Use the official .NET 9.0 SDK image as the build image
+# ---------------------------------------------------------
+# 1. Build Stage
+# ---------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
-# Set the working directory in the container
+# Create a working directory
 WORKDIR /src
 
-# Copy the project files to the container
-COPY ["MosefakApi/MosefakApi.csproj", "MosefakApi/"]
-COPY ["MosefakApi.Business/MosefakApi.Business.csproj", "MosefakApi.Business/"]
-COPY ["MosefakApi.DependencyInjection/MosefakApi.DependencyInjection.csproj", "MosefakApi.DependencyInjection/"]
-COPY ["MosefakApp.Core/MosefakApp.Core.csproj", "MosefakApp.Core/"]
-
-# Restore NuGet packages
-RUN dotnet restore "MosefakApi/MosefakApi.csproj"
-
-# Copy the remaining source code
+# Copy all project files into the container
 COPY . .
 
-# Build the application
-WORKDIR "/src/MosefakApi"
-RUN dotnet build "MosefakApi.csproj" -c Release -o /app/build
+# Restore NuGet packages using your main solution
+RUN dotnet restore MosefakApp.sln
 
-# Publish the application
-FROM build AS publish
-RUN dotnet publish "MosefakApi.csproj" -c Release -o /app/publish
+# Build the solution in Release mode
+RUN dotnet build MosefakApp.sln -c Release -o /app/build
 
-# Use the official .NET 9.0 runtime image as the final image
+# Publish the solution to /app/publish
+RUN dotnet publish MosefakApp.sln -c Release -o /app/publish /p:UseAppHost=false
+
+# ---------------------------------------------------------
+# 2. Runtime Stage
+# ---------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 
-# Set the working directory
+# Create a working directory for the app
 WORKDIR /app
 
-# Copy the published application
-COPY --from=publish /app/publish .
+# Copy published files from build image
+COPY --from=build /app/publish ./
 
-# Set the environment variables
+# Set environment variables for ASP.NET Core
 ENV ASPNETCORE_URLS=http://+:80
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-# Expose port 80
+# Expose port 80 for container traffic
 EXPOSE 80
 
-# Define the entry point for the application
-ENTRYPOINT ["dotnet", "MosefakApi.dll"]
+# Finally, run the published DLL
+ENTRYPOINT ["dotnet", "MosefakApp.API.dll"]

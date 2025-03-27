@@ -10,13 +10,12 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy to AWS Elastic Beanstalk with Docker
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -28,9 +27,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      
       - name: Create ECR repository if not exists
         run: |
           aws ecr describe-repositories --repository-names mosefakapi || \
@@ -42,7 +38,7 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/mosefakapi:${{ github.sha }}
-      
+
       - name: Generate Dockerrun.aws.json
         run: |
           cat > Dockerrun.aws.json << EOF
@@ -60,15 +56,18 @@ jobs:
             ]
           }
           EOF
-      
+
       - name: Generate deployment package
         run: zip -r deploy.zip Dockerrun.aws.json
-      
+
       - name: Deploy to AWS Elastic Beanstalk
-        uses: aws-actions/elastic-beanstalk-deploy-environment@v1
+        uses: einaregilsson/beanstalk-deploy@v21
         with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           application_name: ${{ secrets.EB_APPLICATION_NAME }}
           environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}
-          version_label: ${{ github.sha }}
+          version_label: "docker-app-${{ github.sha }}"
+          region: ${{ secrets.AWS_REGION }}
           deployment_package: deploy.zip
-          wait_for_environment: true
+          wait_for_deployment: true
