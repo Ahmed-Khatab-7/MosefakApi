@@ -8,15 +8,16 @@ WORKDIR /src
 COPY . .
 
 # Find all solution files and restore NuGet packages for them
+# This ensures that all projects in the solution(s) are restored
 RUN find . -name "*.sln" -exec dotnet restore {} \;
 
-# Build the main project
-WORKDIR "/src"
-RUN dotnet build "MosefakApi.sln" -c Release -o /app/build
+# Build the main project solution(s)
+# This will build all projects within the solution(s)
+RUN find . -name "*.sln" -exec echo "Building solution: {}" \; -exec dotnet build {} -c Release -o /app/build \;
 
 # Publish the application
 FROM build AS publish
-RUN dotnet publish "MosefakApi.sln" -c Release -o /app/publish /p:UseAppHost=false
+RUN find . -name "*.sln" -exec dotnet publish {} -c Release -o /app/publish /p:UseAppHost=false \;
 
 # Use the official .NET 9.0 runtime image as the final image
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
