@@ -1,4 +1,4 @@
-name: Deploy to AWS Elastic Beanstalk
+name: Deploy Docker to AWS Elastic Beanstalk
 
 on:
   push:
@@ -20,13 +20,16 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          dotnet-version: '9.0.x'  # Matches your project's .NET 9.0 version
-      
-      - name: Restore dependencies
-        run: dotnet restore
-      
-      - name: Build project
-        run: dotnet build --configuration Release --no-restore
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
       
       - name: Create ECR repository if not exists
         run: |
@@ -40,7 +43,7 @@ jobs:
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/mosefakapi:${{ github.sha }}
       
-      - name: Generate deployment package
+      - name: Generate Dockerrun.aws.json
         run: |
           cat > Dockerrun.aws.json << EOF
           {
@@ -62,11 +65,10 @@ jobs:
         run: zip -r deploy.zip Dockerrun.aws.json
       
       - name: Deploy to AWS Elastic Beanstalk
-        uses: einaregilsson/beanstalk-deploy@v21
+        uses: aws-actions/elastic-beanstalk-deploy-environment@v1
         with:
-          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           application_name: ${{ secrets.EB_APPLICATION_NAME }}
           environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}
           version_label: ${{ github.sha }}
           deployment_package: deploy.zip
+          wait_for_environment: true
