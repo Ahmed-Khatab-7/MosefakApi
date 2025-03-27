@@ -1,39 +1,40 @@
-# Use the official .NET 9.0 SDK image as the build image
+# ---------------------------------------------------------
+# 1. Build Stage
+# ---------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
-# Set the working directory in the container
+# Create a working directory
 WORKDIR /src
 
-# Copy the entire repository content
+# Copy all project files into the container
 COPY . .
 
-# Find all solution files and restore NuGet packages for them
-# This ensures that all projects in the solution(s) are restored
-RUN find . -name "*.sln" -exec dotnet restore {} \;
+# Restore NuGet packages using your main solution
+RUN dotnet restore MosefakApp.sln
 
-# Build the main project solution(s)
-# This will build all projects within the solution(s)
-RUN find . -name "*.sln" -exec echo "Building solution: {}" \; -exec dotnet build {} -c Release -o /app/build \;
+# Build the solution in Release mode
+RUN dotnet build MosefakApp.sln -c Release -o /app/build
 
-# Publish the application
-FROM build AS publish
-RUN find . -name "*.sln" -exec dotnet publish {} -c Release -o /app/publish /p:UseAppHost=false \;
+# Publish the solution to /app/publish
+RUN dotnet publish MosefakApp.sln -c Release -o /app/publish /p:UseAppHost=false
 
-# Use the official .NET 9.0 runtime image as the final image
+# ---------------------------------------------------------
+# 2. Runtime Stage
+# ---------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 
-# Set the working directory
+# Create a working directory for the app
 WORKDIR /app
 
-# Copy the published application
-COPY --from=publish /app/publish .
+# Copy published files from build image
+COPY --from=build /app/publish ./
 
-# Set the environment variables
+# Set environment variables for ASP.NET Core
 ENV ASPNETCORE_URLS=http://+:80
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-# Expose port 80
+# Expose port 80 for container traffic
 EXPOSE 80
 
-# Define the entry point for the application
-ENTRYPOINT ["dotnet", "MosefakApi.dll"]
+# Finally, run the published DLL
+ENTRYPOINT ["dotnet", "MosefakApp.API.dll"]
