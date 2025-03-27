@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy to AWS Elastic Beanstalk with Docker
     runs-on: ubuntu-latest
 
     steps:
@@ -27,9 +26,6 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
 
       - name: Create ECR repository if not exists
         run: |
@@ -69,9 +65,9 @@ jobs:
         with:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          application_name: ${{ secrets.EB_APPLICATION_NAME }}   # e.g., "MosefakApp"
-          environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}   # e.g., "MosefakApp-env"
+          application_name: ${{ secrets.EB_APPLICATION_NAME }}
+          environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}
           version_label: "docker-app-${{ github.sha }}"
           region: ${{ secrets.AWS_REGION }}
           deployment_package: deploy.zip
-          wait_for_environment: true
+          wait_for_deployment: true
