@@ -64,7 +64,6 @@ jobs:
       - name: Generate deployment package
         run: zip -r deploy.zip Dockerrun.aws.json
       
-      # Changed action to use einaregilsson/beanstalk-deploy@v21
       - name: Deploy to AWS Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v21
         with:
