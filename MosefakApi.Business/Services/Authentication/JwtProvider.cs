@@ -20,8 +20,8 @@
                 Subject = new ClaimsIdentity(new List<Claim>()
                 {
                     new Claim(ClaimTypes.NameIdentifier, applicationUser.Id.ToString()),
-                    new Claim(ClaimTypes.GivenName, applicationUser.FirstName),
-                    new Claim(ClaimTypes.Name, applicationUser.UserName!),
+                    //new Claim(ClaimTypes.GivenName, applicationUser.FirstName),
+                    //new Claim(ClaimTypes.Name, applicationUser.UserName!),
                     new Claim(ClaimTypes.Email, applicationUser.Email!),
                     new Claim(nameof(roles), System.Text.Json.JsonSerializer.Serialize(roles),JsonClaimValueTypes.JsonArray),
                     new Claim(nameof(permissions), System.Text.Json.JsonSerializer.Serialize(permissions), JsonClaimValueTypes.JsonArray),
