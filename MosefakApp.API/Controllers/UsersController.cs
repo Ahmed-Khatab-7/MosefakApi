@@ -16,7 +16,7 @@
         }
 
         [HttpGet]
-        [HasPermission(Permissions.Users.View)]
+        [RequiredPermission(Permissions.Users.View)]
         public async Task<ActionResult<PaginatedResponse<UserResponse>>> GetAllUsers(
         [FromQuery] bool includeDeleted = false,
         [FromQuery] int pageNumber = 1,
@@ -51,7 +51,7 @@
 
         // ✅ Get User By Encrypted ID
         [HttpGet("{id}")]
-        [HasPermission(Permissions.Users.ViewById)]
+        [RequiredPermission(Permissions.Users.ViewById)]
         public async Task<ActionResult<UserResponse>> GetById(string id)
         {
             var unprotectedId = UnprotectId(id);
@@ -65,7 +65,7 @@
 
         // ✅ Add User
         [HttpPost]
-        [HasPermission(Permissions.Users.Create)]
+        [RequiredPermission(Permissions.Users.Create)]
         public async Task<ActionResult<UserResponse>> AddUser(UserRequest user)
         {
             var newUser = await _userService.CreateUserAsync(user);
@@ -75,7 +75,7 @@
 
         // ✅ Update User
         [HttpPut("{id}")]
-        [HasPermission(Permissions.Users.Edit)]
+        [RequiredPermission(Permissions.Users.Edit)]
         public async Task<ActionResult<UserResponse>> UpdateUser(string id, UserRequest user)
         {
             var unprotectedId = UnprotectId(id);
@@ -91,7 +91,7 @@
 
         // ✅ Delete User
         [HttpDelete("{id}")]
-        [HasPermission(Permissions.Users.Delete)]
+        [RequiredPermission(Permissions.Users.Delete)]
         public async Task<IActionResult> DeleteUser(string id)
         {
             var unprotectedId = UnprotectId(id);
@@ -105,7 +105,7 @@
 
         // ✅ Unlock User
         [HttpPut("unlock/{id}")]
-        [HasPermission(Permissions.Users.UnLock)]
+        [RequiredPermission(Permissions.Users.UnLock)]
         public async Task<IActionResult> UnlockUser(string id)
         {
             var unprotectedId = UnprotectId(id);

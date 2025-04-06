@@ -12,7 +12,7 @@
         }
 
         [HttpGet("messages")]
-        [HasPermission(Permissions.Contacts.View)] // for admin only
+        [RequiredPermission(Permissions.Contacts.View)] // for admin only
         public async Task<ActionResult<PaginatedResponse<ContactUsResponse>>> GetMessages(int pageNumber = 1, int pageSize = 10)
         {
             var query = await _contactUsService.GetMessages(pageNumber, pageSize);

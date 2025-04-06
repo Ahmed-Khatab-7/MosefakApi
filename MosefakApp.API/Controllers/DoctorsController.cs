@@ -16,7 +16,7 @@
         }
 
         [HttpGet]
-        [HasPermission(Permissions.Doctors.View)]
+        [RequiredPermission(Permissions.Doctors.View)]
         public async Task<ActionResult<PaginatedResponse<DoctorResponse>>> GetAllDoctors(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10)
@@ -36,7 +36,7 @@
 
         // ✅ Get doctor by ID
         [HttpGet("{doctorId}")]
-        [HasPermission(Permissions.Doctors.ViewById)]
+        [RequiredPermission(Permissions.Doctors.ViewById)]
         public async Task<ActionResult<DoctorDetail>> GetDoctorById(string doctorId)
         {
             var unprotectedId = UnprotectId(doctorId);
@@ -51,7 +51,7 @@
 
         // ✅ Search doctors
         [HttpPost("search")]
-        [HasPermission(Permissions.Doctors.Search)]
+        [RequiredPermission(Permissions.Doctors.Search)]
         public async Task<ActionResult<PaginatedResponse<DoctorResponse>>> SearchDoctorsAsync(
             [FromBody] DoctorSearchFilter filter,
             [FromQuery] int pageNumber = 1,
@@ -79,7 +79,7 @@
 
         // ✅ Search doctors
         [HttpPost("search-by-speciality")]
-        [HasPermission(Permissions.Doctors.SearchBySpeciality)]
+        [RequiredPermission(Permissions.Doctors.SearchBySpeciality)]
         public async Task<ActionResult<PaginatedResponse<DoctorResponse>>> SearchDoctorsBySpecialityAsync(
             [FromBody] DoctorSearchBySpecialityCategoryFilter filter,
             [FromQuery] int pageNumber = 1,
@@ -107,7 +107,7 @@
 
         // ✅ Get doctor profile (Authenticated Doctor)
         [HttpGet("profile")]
-        [HasPermission(Permissions.Doctors.ViewProfile)]
+        [RequiredPermission(Permissions.Doctors.ViewProfile)]
         public async Task<ActionResult<DoctorProfileResponse>> GetDoctorProfile()
         {
             var userId = User.GetUserId();
@@ -124,7 +124,7 @@
 
         // ✅ Get top 10 doctors
         [HttpGet("top-ten")]
-        [HasPermission(Permissions.Doctors.ViewTopTen)]
+        [RequiredPermission(Permissions.Doctors.ViewTopTen)]
         public async Task<ActionResult<List<DoctorResponse>>> GetTopTenDoctors()
         {
             var doctors = await _doctorService.TopTenDoctors();
@@ -141,7 +141,7 @@
 
         // ✅ Get upcoming appointments
         [HttpGet("appointments/upcoming")]
-        [HasPermission(Permissions.Doctors.ViewUpcomingAppointments)]
+        [RequiredPermission(Permissions.Doctors.ViewUpcomingAppointments)]
         public async Task<ActionResult<PaginatedResponse<AppointmentDto>>> GetUpcomingAppointmentsAsync(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
@@ -161,7 +161,7 @@
 
         // ✅ Get past appointments
         [HttpGet("appointments/past")]
-        [HasPermission(Permissions.Doctors.ViewPastAppointments)]
+        [RequiredPermission(Permissions.Doctors.ViewPastAppointments)]
         public async Task<ActionResult<PaginatedResponse<AppointmentDto>>> GetPastAppointmentsAsync(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10)
@@ -181,7 +181,7 @@
 
         // ✅ Get total appointments
         [HttpGet("appointments/total")]
-        [HasPermission(Permissions.Doctors.GetTotalAppointments)]
+        [RequiredPermission(Permissions.Doctors.GetTotalAppointments)]
         public async Task<ActionResult<long>> GetTotalAppointmentsAsync()
         {
             var doctorId = User.GetUserId();
@@ -191,7 +191,7 @@
 
         // ✅ Upload profile image
         [HttpPost("profile/image")]
-        [HasPermission(Permissions.Doctors.UploadProfileImage)]
+        [RequiredPermission(Permissions.Doctors.UploadProfileImage)]
         public async Task<ActionResult<bool>> UploadProfileImageAsync(IFormFile imageFile, CancellationToken cancellationToken = default)
         {
             var userId = User.GetUserId();
@@ -200,7 +200,7 @@
         }
 
         [HttpGet("specializations")]
-        [HasPermission(Permissions.Specializations.View)]
+        [RequiredPermission(Permissions.Specializations.View)]
         public async Task<ActionResult<PaginatedResponse<SpecializationResponse>>> GetSpecializations(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
@@ -214,7 +214,7 @@
 
         // ✅ Specialization Management
         [HttpPost("specializations")]
-        [HasPermission(Permissions.Specializations.Create)]
+        [RequiredPermission(Permissions.Specializations.Create)]
         public async Task<ActionResult<bool>> AddSpecializationAsync([FromBody] SpecializationRequest request)
         {
             var doctorId = User.GetUserId();
@@ -223,7 +223,7 @@
         }
 
         [HttpPut("specializations/{specializationId}")]
-        [HasPermission(Permissions.Specializations.Edit)]
+        [RequiredPermission(Permissions.Specializations.Edit)]
         public async Task<ActionResult<bool>> EditSpecializationAsync(string specializationId, [FromBody] SpecializationRequest request)
         {
             var unprotectedSpecializationId = UnprotectId(specializationId);
@@ -235,7 +235,7 @@
         }
 
         [HttpDelete("specializations/{specializationId}")]
-        [HasPermission(Permissions.Specializations.Remove)]
+        [RequiredPermission(Permissions.Specializations.Remove)]
         public async Task<ActionResult<bool>> RemoveSpecializationAsync(string specializationId)
         {
             var unprotectedSpecializationId = UnprotectId(specializationId);
@@ -248,7 +248,7 @@
 
         // ✅ Admin: Add a new doctor
         [HttpPost]
-        [HasPermission(Permissions.Doctors.Create)]
+        [RequiredPermission(Permissions.Doctors.Create)]
         public async Task<IActionResult> AddDoctor([FromBody] DoctorRequest request)
         {
             await _doctorService.AddDoctor(request);
@@ -257,7 +257,7 @@
 
         // ✅ Complete doctor profile
         [HttpPost("profile/complete")]
-        [HasPermission(Permissions.Doctors.CompleteProfile)]
+        [RequiredPermission(Permissions.Doctors.CompleteProfile)]
         public async Task<IActionResult> CompleteDoctorProfile([FromForm] CompleteDoctorProfileRequest request)
         {
             var userId = User.GetUserId();
@@ -266,7 +266,7 @@
         }
 
         [HttpPut("update-working-times/{clinicId}")]
-        [HasPermission(Permissions.Doctors.UpdateWorkingTimesAsync)]
+        [RequiredPermission(Permissions.Doctors.UpdateWorkingTimesAsync)]
         public async Task<ActionResult<bool>> UpdateWorkingTimesAsync(string clinicId, IEnumerable<WorkingTimeRequest> workingTimes)
         {
             var unprotectedId = UnprotectId(clinicId);
@@ -280,7 +280,7 @@
 
         // ✅ Update doctor profile
         [HttpPut("profile/update")]
-        [HasPermission(Permissions.Doctors.EditProfile)]
+        [RequiredPermission(Permissions.Doctors.EditProfile)]
         public async Task<IActionResult> UpdateDoctorProfile(DoctorProfileUpdateRequest request, CancellationToken cancellationToken = default)
         {
             var userId = User.GetUserId();
@@ -290,7 +290,7 @@
 
         // ✅ Admin: Delete a doctor
         [HttpDelete("{doctorId}")]
-        [HasPermission(Permissions.Doctors.Delete)]
+        [RequiredPermission(Permissions.Doctors.Delete)]
         public async Task<IActionResult> DeleteDoctor(string doctorId)
         {
             var unprotectedId = UnprotectId(doctorId);
@@ -302,7 +302,7 @@
 
         // ✅ Get doctor's available time slots
         [HttpGet("{doctorId}/clinics/{clinicId}/appointments/{appointmentTypeId}/available-slots")]
-        [HasPermission(Permissions.Doctors.ViewAvailableTimeSlots)]
+        [RequiredPermission(Permissions.Doctors.ViewAvailableTimeSlots)]
         public async Task<ActionResult<List<TimeSlot>>> GetAvailableTimeSlots(string doctorId, string clinicId, string appointmentTypeId, [FromQuery] DayOfWeek selectedDay)
         {
             var unprotectedId = UnprotectId(doctorId);
@@ -317,7 +317,7 @@
         }
 
         [HttpGet("awards")]
-        [HasPermission(Permissions.Awards.View)]
+        [RequiredPermission(Permissions.Awards.View)]
         public async Task<ActionResult<PaginatedResponse<AwardResponse>>> GetAwards(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10)
@@ -331,7 +331,7 @@
 
         // ✅ Awards Management
         [HttpPost("awards")]
-        [HasPermission(Permissions.Awards.Create)]
+        [RequiredPermission(Permissions.Awards.Create)]
         public async Task<ActionResult<bool>> AddAwardAsync([FromBody] AwardRequest request, CancellationToken cancellationToken = default)
         {
             var doctorId = User.GetUserId();
@@ -340,7 +340,7 @@
         }
 
         [HttpPut("awards/{awardId}")]
-        [HasPermission(Permissions.Awards.Edit)]
+        [RequiredPermission(Permissions.Awards.Edit)]
         public async Task<ActionResult<bool>> EditAwardAsync(string awardId, [FromBody] AwardRequest request)
         {
             var unprotectedAwardId = UnprotectId(awardId);
@@ -352,7 +352,7 @@
         }
 
         [HttpDelete("awards/{awardId}")]
-        [HasPermission(Permissions.Awards.Remove)]
+        [RequiredPermission(Permissions.Awards.Remove)]
         public async Task<ActionResult<bool>> RemoveAwardAsync(string awardId)
         {
             var unprotectedAwardId = UnprotectId(awardId);
@@ -364,7 +364,7 @@
         }
 
         [HttpGet("educations")]
-        [HasPermission(Permissions.Educations.View)]
+        [RequiredPermission(Permissions.Educations.View)]
         public async Task<ActionResult<PaginatedResponse<EducationResponse>>> GetEducations(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10)
@@ -378,7 +378,7 @@
 
         // ✅ Education Management
         [HttpPost("education")]
-        [HasPermission(Permissions.Educations.Create)]
+        [RequiredPermission(Permissions.Educations.Create)]
         public async Task<ActionResult<bool>> AddEducationAsync([FromForm] EducationRequest request, CancellationToken cancellationToken = default)
         {
             var doctorId = User.GetUserId();
@@ -387,7 +387,7 @@
         }
 
         [HttpPut("education/{educationId}")]
-        [HasPermission(Permissions.Educations.Edit)]
+        [RequiredPermission(Permissions.Educations.Edit)]
         public async Task<ActionResult<bool>> EditEducationAsync(string educationId, [FromForm] EducationRequest request, CancellationToken cancellationToken = default)
         {
             var unprotectedEducationId = UnprotectId(educationId);
@@ -399,7 +399,7 @@
         }
 
         [HttpDelete("education/{educationId}")]
-        [HasPermission(Permissions.Educations.Remove)]
+        [RequiredPermission(Permissions.Educations.Remove)]
         public async Task<ActionResult<bool>> RemoveEducationAsync(string educationId)
         {
             var unprotectedEducationId = UnprotectId(educationId);
@@ -411,7 +411,7 @@
         }
 
         [HttpGet("experiences")]
-        [HasPermission(Permissions.Experiences.View)]
+        [RequiredPermission(Permissions.Experiences.View)]
         public async Task<ActionResult<PaginatedResponse<ExperienceResponse>>> GetExperiences(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10)
@@ -424,7 +424,7 @@
         }
 
         [HttpPost("experience")]
-        [HasPermission(Permissions.Experiences.Create)]
+        [RequiredPermission(Permissions.Experiences.Create)]
         public async Task<ActionResult<bool>> AddExperienceAsync([FromForm] ExperienceRequest request, CancellationToken cancellationToken = default)
         {
             var doctorId = User.GetUserId();
@@ -434,7 +434,7 @@
 
 
         [HttpPut("experience/{experienceId}")]
-        [HasPermission(Permissions.Experiences.Edit)]
+        [RequiredPermission(Permissions.Experiences.Edit)]
         public async Task<ActionResult<bool>> EditExperienceAsync(string experienceId, [FromForm] ExperienceRequest request, CancellationToken cancellationToken = default)
         {
             var unprotectedExperienceId = UnprotectId(experienceId);
@@ -446,7 +446,7 @@
         }
 
         [HttpDelete("experience/{experienceId}")]
-        [HasPermission(Permissions.Experiences.Remove)]
+        [RequiredPermission(Permissions.Experiences.Remove)]
         public async Task<ActionResult<bool>> RemoveExperienceAsync(string experienceId)
         {
             var unprotectedExperienceId = UnprotectId(experienceId);
@@ -459,7 +459,7 @@
 
         // ✅ Add a new clinic
         [HttpPost("clinics")]
-        [HasPermission(Permissions.Clinics.Create)]
+        [RequiredPermission(Permissions.Clinics.Create)]
         public async Task<ActionResult<bool>> AddClinicAsync([FromForm] ClinicRequest request, CancellationToken cancellationToken = default)
         {
             var doctorId = User.GetUserId();
@@ -469,7 +469,7 @@
 
         // ✅ Edit a clinic
         [HttpPut("clinics/{clinicId}")]
-        [HasPermission(Permissions.Clinics.Edit)]
+        [RequiredPermission(Permissions.Clinics.Edit)]
         public async Task<ActionResult<bool>> EditClinicAsync(string clinicId, [FromForm] ClinicRequest request, CancellationToken cancellationToken = default)
         {
             var unprotectedClinicId = UnprotectId(clinicId);
@@ -482,7 +482,7 @@
 
         // ✅ Remove a clinic
         [HttpDelete("clinics/{clinicId}")]
-        [HasPermission(Permissions.Clinics.Remove)]
+        [RequiredPermission(Permissions.Clinics.Remove)]
         public async Task<ActionResult<bool>> RemoveClinicAsync(string clinicId)
         {
             var unprotectedClinicId = UnprotectId(clinicId);
@@ -495,7 +495,7 @@
 
         // ✅ Get all clinics of a doctor for patient
         [HttpGet("{doctorId}/clinics")]
-        [HasPermission(Permissions.Clinics.View)]
+        [RequiredPermission(Permissions.Clinics.View)]
         public async Task<ActionResult<PaginatedResponse<ClinicResponse>>> GetDoctorClinicsAsync(
             string doctorId,
             [FromQuery] int pageNumber = 1,
@@ -514,7 +514,7 @@
 
         // ✅ Get all clinics of a doctor for doctor
         [HttpGet("clinics")]
-        [HasPermission(Permissions.Clinics.View)]
+        [RequiredPermission(Permissions.Clinics.View)]
         public async Task<ActionResult<PaginatedResponse<ClinicResponse>>> GetDoctorClinicsAsync(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
@@ -531,7 +531,7 @@
 
         // ✅ Get average rating
         [HttpGet("reviews/{doctorId}/average-rating")]
-        [HasPermission(Permissions.Doctors.ViewAverageRating)]
+        [RequiredPermission(Permissions.Doctors.ViewAverageRating)]
         public async Task<ActionResult<double>> GetAverageRatingAsync(string doctorId)
         {
             var unprotectedDoctorId = UnprotectId(doctorId);
@@ -542,7 +542,7 @@
 
         // ✅ Get total patients served
         [HttpGet("analytics/total-patients")]
-        [HasPermission(Permissions.Doctors.ViewTotalPatientsServed)]
+        [RequiredPermission(Permissions.Doctors.ViewTotalPatientsServed)]
         public async Task<ActionResult<long>> GetTotalPatientsServedAsync()
         {
             var doctorId = User.GetUserId();
@@ -552,7 +552,7 @@
 
         // ✅ Get doctor's earnings
         [HttpGet("earnings-report")]
-        [HasPermission(Permissions.Doctors.ViewEarningsReport)]
+        [RequiredPermission(Permissions.Doctors.ViewEarningsReport)]
         public async Task<ActionResult<DoctorEarningsResponse>> GetEarningsReportAsync([FromQuery] DateTimeOffset startDate, [FromQuery] DateTimeOffset endDate)
         {
             var doctorId = User.GetUserId();

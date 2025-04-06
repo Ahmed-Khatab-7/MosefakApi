@@ -18,7 +18,7 @@
         /// <param name="doctorId">Doctor ID</param>
         /// <returns>List of reviews</returns>
         [HttpGet("doctor/{doctorId}")]
-        [HasPermission(Permissions.Reviews.View)]
+        [RequiredPermission(Permissions.Reviews.View)]
         public async Task<ActionResult<List<ReviewResponse>>> GetDoctorReviews(string doctorId)
         {
             var unprotectedDoctorId = UnprotectId(doctorId);
@@ -41,7 +41,7 @@
         /// <param name="doctorId">Doctor ID</param>
         /// <param name="request">Review data</param>
         [HttpPost("doctor/{doctorId}")]
-        [HasPermission(Permissions.Reviews.Create)]
+        [RequiredPermission(Permissions.Reviews.Create)]
         public async Task<ActionResult<bool>> AddReview(string doctorId, [FromBody] ReviewRequest request, CancellationToken cancellationToken)
         {
             var unprotectedDoctorId = UnprotectId(doctorId);
@@ -63,7 +63,7 @@
         /// <param name="reviewId">Review ID</param>
         /// <param name="request">Updated review data</param>
         [HttpPut("{reviewId}")]
-        [HasPermission(Permissions.Reviews.Edit)]
+        [RequiredPermission(Permissions.Reviews.Edit)]
         public async Task<ActionResult<bool>> UpdateReview(string reviewId, [FromBody] ReviewRequest request, CancellationToken cancellationToken)
         {
             var unprotectedReviewId = UnprotectId(reviewId);
@@ -82,7 +82,7 @@
         /// </summary>
         /// <param name="reviewId">Review ID</param>
         [HttpDelete("{reviewId}")]
-        [HasPermission(Permissions.Reviews.Delete)]
+        [RequiredPermission(Permissions.Reviews.Delete)]
         public async Task<ActionResult<bool>> DeleteReview(string reviewId, CancellationToken cancellationToken)
         {
             var unprotectedReviewId = UnprotectId(reviewId);

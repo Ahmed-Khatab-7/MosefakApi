@@ -11,7 +11,7 @@ public class ChatbotController : ControllerBase
     }
 
     [HttpPost("ask")]
-   [HasPermission(Permissions.Chatbot.Ask)]
+    [RequiredPermission(Permissions.Chatbot.Ask)]
     public async Task<IActionResult> Ask([FromBody] ChatRequestDto dto)
     {
         // FluentValidation will validate ChatRequestDto

@@ -105,7 +105,7 @@ app.UseSerilogRequestLogging();
 app.UseRateLimiter();
 
 app.UseAuthentication();
-
+app.UsePermissionAuthorization(); // your custom permission check
 app.UseAuthorization();
 
 app.MapControllers();

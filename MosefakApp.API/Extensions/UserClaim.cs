@@ -7,4 +7,5 @@
             return Convert.ToInt32(principal.FindFirstValue(ClaimTypes.NameIdentifier));
         }
     }
+
 }

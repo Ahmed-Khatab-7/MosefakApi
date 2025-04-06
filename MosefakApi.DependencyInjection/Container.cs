@@ -1,4 +1,6 @@
-﻿namespace MosefakApi.DependencyInjection
+﻿using MosefakApp.Core.IServices.Authentication;
+
+namespace MosefakApi.DependencyInjection
 {
     public static class Container
     {
@@ -117,6 +119,8 @@
             services.AddSingleton<IStripeService, StripeService>();
             services.AddScoped<IAppointmentTypeService, AppointmentTypeService>();
             services.AddScoped<IContactUsService, ContactUsService>();
+            services.AddScoped<IUserPermissionService, UserPermissionService>();
+
 
             return services;
         }

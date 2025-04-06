@@ -10,6 +10,7 @@
         }
 
         [HttpPost("Login")]
+        [AllowAnonymousPermission]
         [ProducesResponseType(type: typeof(LoginResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(type: typeof(CustomResponse), StatusCodes.Status400BadRequest)]
         public async Task<LoginResponse> Login(LoginRequest loginRequest)
@@ -18,6 +19,7 @@
         }
 
         [HttpPost("Register")]
+        [AllowAnonymousPermission]
         public async Task<IActionResult> Register(RegisterRequest registerRequest)
         {
             await _authenticationService.Register(registerRequest);
@@ -26,6 +28,7 @@
         }
 
         [HttpPost("confirm-email")]
+        [AllowAnonymousPermission]
         public async Task<IActionResult> ConfirmEmailAsync([FromQuery] ConfirmEmailRequest request)
         {
             await _authenticationService.ConfirmEmailAsync(request);
@@ -34,6 +37,7 @@
         }
 
         [HttpPost("resend-confirmation-email")]
+        [AllowAnonymousPermission]
         public async Task<IActionResult> ResendConfirmationEmail(ResendConfirmationEmailRequest request)
         {
             await _authenticationService.ResendConfirmationEmail(request);
@@ -43,6 +47,7 @@
 
 
         [HttpPost("forgot-password")]
+        [AllowAnonymousPermission]
         public async Task<IActionResult> ForgetPasswordAsync(ForgetPasswordRequest request)
         {
             await _authenticationService.ForgetPasswordAsync(request);
@@ -51,6 +56,7 @@
         }
 
         [HttpPost("reset-password")]
+        [AllowAnonymousPermission]
         public async Task<IActionResult> ResetPasswordAsync(ResetPasswordRequest request)
         {
             await _authenticationService.ResetPasswordAsync(request);
@@ -58,6 +64,5 @@
             return Ok();
         }
 
-        
     }
 }

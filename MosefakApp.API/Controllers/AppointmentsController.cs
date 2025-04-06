@@ -15,7 +15,7 @@
         }
 
         [HttpGet("patient")]
-        [HasPermission(Permissions.Appointments.ViewPatientAppointments)]
+        [RequiredPermission(Permissions.Appointments.ViewPatientAppointments)]
         public async Task<ActionResult<PaginatedResponse<AppointmentResponse>>> GetPatientAppointments(
         [FromQuery] AppointmentStatus? status = null,
         [FromQuery] int pageNumber = 1,
@@ -61,7 +61,7 @@
 
 
         [HttpGet("{appointmentId}")]
-        [HasPermission(Permissions.Appointments.View)]
+        [RequiredPermission(Permissions.Appointments.View)]
         public async Task<ActionResult<AppointmentResponse>> GetAppointmentById(
         string appointmentId,
         CancellationToken cancellationToken = default)
@@ -92,7 +92,7 @@
 
         // Get Appointments by Date Range (Patient)
         [HttpGet("range")]
-        [HasPermission(Permissions.Appointments.ViewInRange)]
+        [RequiredPermission(Permissions.Appointments.ViewInRange)]
         public async Task<ActionResult<PaginatedResponse<AppointmentResponse>>> GetAppointmentsByDateRange(
         [FromQuery] DateTimeOffset startDate,
         [FromQuery] DateTimeOffset endDate,
@@ -139,7 +139,7 @@
 
 
         [HttpPut("{appointmentId}/approve")]
-        [HasPermission(Permissions.Appointments.Approve)]
+        [RequiredPermission(Permissions.Appointments.Approve)]
         public async Task<ActionResult<bool>> ApproveAppointmentByDoctor(string appointmentId)
         {
             var unprotectedId = UnprotectId(appointmentId);
@@ -151,7 +151,7 @@
         }
 
         [HttpPut("{appointmentId}/reject")]
-        [HasPermission(Permissions.Appointments.Reject)]
+        [RequiredPermission(Permissions.Appointments.Reject)]
         public async Task<ActionResult<bool>> RejectAppointmentByDoctor(string appointmentId, RejectAppointmentRequest request)
         {
             var unprotectedId = UnprotectId(appointmentId);
@@ -164,7 +164,7 @@
         }
 
         [HttpPut("{appointmentId}/complete")]
-        [HasPermission(Permissions.Appointments.MarkAsCompleted)]
+        [RequiredPermission(Permissions.Appointments.MarkAsCompleted)]
         public async Task<ActionResult<bool>> MarkAppointmentAsCompleted(string appointmentId)
         {
             var unprotectedId = UnprotectId(appointmentId);
@@ -177,7 +177,7 @@
         }
 
         [HttpDelete("{appointmentId}/doctor-cancel")]
-        [HasPermission(Permissions.Appointments.CancelByDoctor)]
+        [RequiredPermission(Permissions.Appointments.CancelByDoctor)]
         public async Task<ActionResult<bool>> CancelAppointmentByDoctor(string appointmentId, CancelAppointmentRequest request)
         {
             var unprotectedId = UnprotectId(appointmentId);
@@ -190,7 +190,7 @@
         }
 
         [HttpPut("{appointmentId}/patient-cancel")]
-        [HasPermission(Permissions.Appointments.CancelByPatient)]
+        [RequiredPermission(Permissions.Appointments.CancelByPatient)]
         public async Task<ActionResult<bool>> CancelAppointmentAsync(string appointmentId, CancelAppointmentRequest request, CancellationToken token = default)
         {
             var unprotectedId = UnprotectId(appointmentId);
@@ -206,7 +206,7 @@
 
 
         [HttpPost("create-payment-intent/{appointmentId}")]
-        [HasPermission(Permissions.Appointments.CreatePaymentIntent)]
+        [RequiredPermission(Permissions.Appointments.CreatePaymentIntent)]
         public async Task<ActionResult<string>> CreatePaymentIntent(string appointmentId, CancellationToken cancellationToken = default)
         {
             var unprotectedId = UnprotectId(appointmentId);
@@ -221,7 +221,7 @@
         // in case Manually Confirming from Frontend, If webhooks are not used, the frontend calls..
 
         [HttpPost("confirm-appointment-payment/{appointmentId}")]
-        [HasPermission(Permissions.Appointments.ConfirmPayment)]
+        [RequiredPermission(Permissions.Appointments.ConfirmPayment)]
         public async Task<IActionResult> ConfirmAppointmentPayment(string appointmentId, CancellationToken cancellationToken = default)
         {
             var unprotectedId = UnprotectId(appointmentId);
@@ -234,7 +234,7 @@
         }
 
         [HttpPut("reschedule")]
-        [HasPermission(Permissions.Appointments.Reschedule)]
+        [RequiredPermission(Permissions.Appointments.Reschedule)]
         public async Task<ActionResult<bool>> RescheduleAppointmentAsync(RescheduleAppointmentRequest request)
         {
             var unprotectedId = UnprotectId(request.AppointmentId);
@@ -247,7 +247,7 @@
         }
 
         [HttpPost("book")]
-        [HasPermission(Permissions.Appointments.Book)]
+        [RequiredPermission(Permissions.Appointments.Book)]
         public async Task<ActionResult<bool>> BookAppointment(BookAppointmentRequest request, CancellationToken cancellationToken = default)
         {
             var unprotectedDoctorId = UnprotectId(request.DoctorId);
@@ -268,7 +268,7 @@
         }
 
         [HttpGet("{appointmentId}/status")]
-        [HasPermission(Permissions.Appointments.ViewStatus)]
+        [RequiredPermission(Permissions.Appointments.ViewStatus)]
         public async Task<ActionResult<AppointmentStatus>> GetAppointmentStatus(string appointmentId)
         {
             var unprotectedId = UnprotectId(appointmentId);
@@ -281,7 +281,7 @@
         }
 
         [HttpGet("doctor")]
-        [HasPermission(Permissions.Appointments.ViewDoctorAppointments)]
+        [RequiredPermission(Permissions.Appointments.ViewDoctorAppointments)]
         public async Task<ActionResult<PaginatedResponse<AppointmentResponse>>> GetDoctorAppointments(
         [FromQuery] AppointmentStatus? status = null,
         [FromQuery] int pageNumber = 1,
@@ -327,7 +327,7 @@
 
 
         [HttpGet("pending")]
-        [HasPermission(Permissions.Appointments.ViewPendingForDoctor)]
+        [RequiredPermission(Permissions.Appointments.ViewPendingForDoctor)]
         public async Task<ActionResult<PaginatedResponse<AppointmentResponse>>> GetPendingAppointmentsForDoctor(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
@@ -370,7 +370,7 @@
         }
 
         [HttpGet("doctor/range")]
-        [HasPermission(Permissions.Appointments.ViewInRangeForDoctor)]
+        [RequiredPermission(Permissions.Appointments.ViewInRangeForDoctor)]
         public async Task<ActionResult<PaginatedResponse<AppointmentResponse>>> GetAppointmentsByDateRangeForDoctor(
         [FromQuery] DateTimeOffset startDate,
         [FromQuery] DateTimeOffset endDate,

@@ -6,142 +6,140 @@
 
         public static class Users
         {
-            // "Permissions.Users.View" -> "U.V"
-            public const string View = "U.V";
-            // "Permissions.Users.ViewUserById" -> "U.VID"
-            public const string ViewById = "U.VID";
-            public const string Create = "U.C";
-            public const string Edit = "U.E";
-            public const string Delete = "U.D";
-            public const string UnLock = "U.UL";
+            public const string View = "Permissions.Users.View"; 
+            public const string ViewById = "Permissions.Users.ViewUserById";
+            public const string Create = "Permissions.Users.Create"; 
+            public const string Edit = "Permissions.Users.Edit"; 
+            public const string Delete = "Permissions.Users.Delete"; 
+            public const string UnLock = "Permissions.Users.UnLock"; 
         }
 
         public static class Roles
         {
-            public const string View = "R.V";
-            public const string ViewById = "R.VID";
-            public const string Create = "R.C";
-            public const string Edit = "R.E";
-            public const string Delete = "R.D";
-            public const string AssignPermissionToRole = "R.APR";
+            public const string View = "Permissions.Roles.View"; 
+            public const string ViewById = "Permissions.Roles.ViewRoleById"; 
+            public const string Create = "Permissions.Roles.Create"; 
+            public const string Edit = "Permissions.Roles.Edit";
+            public const string Delete = "Permissions.Roles.Delete";
+            public const string AssignPermissionToRole = "Permissions.Roles.AssignPermissionToRole"; 
         }
 
         public static class Doctors
         {
-            public const string View = "D.V";
-            public const string ViewById = "D.VID";
-            public const string ViewProfile = "D.VP";
-            public const string ViewTopTen = "D.VTT";
-            public const string Search = "D.S";
-            public const string SearchBySpeciality = "D.SBS";
-            public const string ViewAvailableTimeSlots = "D.VATS";
-            public const string ViewUpcomingAppointments = "D.VUA";
-            public const string ViewPastAppointments = "D.VPA";
-            public const string GetTotalAppointments = "D.GTA";
-            public const string Create = "D.C";
-            public const string UploadProfileImage = "D.UPI";
-            public const string CompleteProfile = "D.CP";
-            public const string Edit = "D.E";
-            public const string EditProfile = "D.EP";
-            public const string Delete = "D.D";
-            public const string ViewReviews = "D.VR";
-            public const string ViewAverageRating = "D.VAR";
-            public const string ViewTotalPatientsServed = "D.VTPS";
-            public const string ViewEarningsReport = "D.VER";
-            public const string UpdateWorkingTimesAsync = "D.UWTA";
+            public const string View = "Permissions.Doctors.View"; 
+            public const string ViewById = "Permissions.Doctors.ViewDoctorById"; 
+            public const string ViewProfile = "Permissions.Doctors.ViewDoctorProfile"; 
+            public const string ViewTopTen = "Permissions.Doctors.ViewTopTenDoctors"; 
+            public const string Search = "Permissions.Doctors.SearchDoctors"; 
+            public const string SearchBySpeciality = "Permissions.Doctors.SearchBySpeciality"; 
+            public const string ViewAvailableTimeSlots = "Permissions.Doctors.ViewAvailableTimeSlots"; 
+            public const string ViewUpcomingAppointments = "Permissions.Doctors.ViewUpcomingAppointmentsForDoctor"; 
+            public const string ViewPastAppointments = "Permissions.Doctors.ViewPastAppointmentsForDoctor"; 
+            public const string GetTotalAppointments = "Permissions.Doctors.GetTotalAppointmentsAsync"; 
+            public const string Create = "Permissions.Doctors.Create"; 
+            public const string UploadProfileImage = "Permissions.Doctors.UploadImage"; 
+            public const string CompleteProfile = "Permissions.Doctors.CompleteDoctorProfile"; 
+            public const string Edit = "Permissions.Doctors.Edit"; 
+            public const string EditProfile = "Permissions.Doctors.EditDoctorProfile";
+            public const string Delete = "Permissions.Doctors.Delete"; 
+            public const string ViewReviews = "Permissions.Doctor.ViewDoctorReviews";
+            public const string ViewAverageRating = "Permissions.Doctor.ViewAverageRating";
+            public const string ViewTotalPatientsServed = "Permissions.Doctor.ViewTotalPatientsServed";
+            public const string ViewEarningsReport = "Permissions.Doctor.ViewEarningsReport"; 
+            public const string UpdateWorkingTimesAsync = "Permissions.Doctors.UpdateWorkingTimesAsync"; 
         }
 
         public static class AppointmentTypes
         {
-            public const string View = "AT.V";
-            public const string Add = "AT.A";
-            public const string Edit = "AT.E";
-            public const string Delete = "AT.D";
+            public const string View = "Permissions.Doctors.ViewAppointmentTypes";
+            public const string Add = "Permissions.Doctors.AddAppointmentTypes";
+            public const string Edit = "Permissions.Doctors.EditAppointmentTypes";
+            public const string Delete = "Permissions.Doctors.DeleteAppointmentTypes";
         }
 
         public static class Appointments
         {
-            public const string ViewPatientAppointments = "AP.VPA";
-            public const string ViewDoctorAppointments = "AP.VDA";
-            public const string ViewPendingForDoctor = "AP.VPD";
-            public const string ViewInRangeForDoctor = "AP.VIRD";
-            public const string View = "AP.V";
-            public const string ViewInRange = "AP.VI";
-            public const string ViewStatus = "AP.VS";
-            public const string CancelByDoctor = "AP.CBD";
-            public const string CancelByPatient = "AP.CBP";
-            public const string Approve = "AP.A";
-            public const string Reject = "AP.R";
-            public const string MarkAsCompleted = "AP.MAC";
-            public const string Reschedule = "AP.RES";
-            public const string Book = "AP.B";
-            public const string CreatePaymentIntent = "AP.CPI";
-            public const string ConfirmPayment = "AP.CP";
+            public const string ViewPatientAppointments = "Permissions.Appointments.ViewPatientAppointments";
+            public const string ViewDoctorAppointments = "Permissions.Appointments.ViewDoctorAppointments";
+            public const string ViewPendingForDoctor = "Permissions.Appointments.ViewPendingAppointmentsForDoctor";
+            public const string ViewInRangeForDoctor = "Permissions.Appointments.ViewAppointmentsForDoctorInRange";
+            public const string View = "Permissions.Appointments.ViewAppointment";
+            public const string ViewInRange = "Permissions.Appointments.ViewAppointmentsInRange";
+            public const string ViewStatus = "Permissions.Appointments.ViewAppointmentStatus";
+            public const string CancelByDoctor = "Permissions.Appointments.CancelAppointmentByDoctor";
+            public const string CancelByPatient = "Permissions.Appointments.CancelAppointmentByPatient";
+            public const string Approve = "Permissions.Appointments.ApproveAppointment";
+            public const string Reject = "Permissions.Appointments.RejectAppointment";
+            public const string MarkAsCompleted = "Permissions.Appointments.MarkAppointmentAsCompleted";
+            public const string Reschedule = "Permissions.Appointments.RescheduleAppointment";
+            public const string Book = "Permissions.Appointments.BookAppointment";
+            public const string CreatePaymentIntent = "Permissions.Appointments.CreatePaymentIntent";
+            public const string ConfirmPayment = "Permissions.Appointments.ConfirmAppointmentPayment";
         }
 
         public static class Patients
         {
-            public const string ViewProfile = "PT.VP";
-            public const string EditProfile = "PT.EP";
-            public const string UploadProfileImage = "PT.UPI";
+            public const string ViewProfile = "Permissions.Patients.ViewProfile";
+            public const string EditProfile = "Permissions.Patients.EditPatientProfile";
+            public const string UploadProfileImage = "Permissions.Patients.UploadPatientProfileImage";
         }
 
         public static class Specializations
         {
-            public const string View = "SP.V";
-            public const string Create = "SP.C";
-            public const string Edit = "SP.E";
-            public const string Remove = "SP.R";
+            public const string View = "Permissions.Specializations.ViewSpecializations";
+            public const string Create = "Permissions.Specializations.CreateSpecialization";
+            public const string Edit = "Permissions.Specializations.EditSpecialization";
+            public const string Remove = "Permissions.Specializations.RemoveSpecialization";
         }
 
         public static class Experiences
         {
-            public const string View = "EX.V";
-            public const string Create = "EX.C";
-            public const string Edit = "EX.E";
-            public const string Remove = "EX.R";
+            public const string View = "Permissions.Experiences.ViewExperiences";
+            public const string Create = "Permissions.Experiences.CreateExperience";
+            public const string Edit = "Permissions.Experiences.EditExperience";
+            public const string Remove = "Permissions.Experiences.RemoveExperience";
         }
 
         public static class Awards
         {
-            public const string View = "AW.V";
-            public const string Create = "AW.C";
-            public const string Edit = "AW.E";
-            public const string Remove = "AW.R";
+            public const string View = "Permissions.Awards.ViewAwards";
+            public const string Create = "Permissions.Awards.CreateAward";
+            public const string Edit = "Permissions.Awards.EditAward";
+            public const string Remove = "Permissions.Awards.RemoveAward";
         }
 
         public static class Educations
         {
-            public const string View = "ED.V";
-            public const string Create = "ED.C";
-            public const string Edit = "ED.E";
-            public const string Remove = "ED.R";
+            public const string View = "Permissions.Educations.ViewEducations";
+            public const string Create = "Permissions.Educations.CreateEducation";
+            public const string Edit = "Permissions.Educations.EditEducation";
+            public const string Remove = "Permissions.Educations.RemoveEducation";
         }
 
         public static class Clinics
         {
-            public const string View = "CL.V";
-            public const string Create = "CL.C";
-            public const string Edit = "CL.E";
-            public const string Remove = "CL.R";
-        }
-
-        public static class Chatbot
-        {
-            public const string Ask = "CB.A";
+            public const string View = "Permissions.Clinics.ViewClinics";
+            public const string Create = "Permissions.Clinics.CreateClinic";
+            public const string Edit = "Permissions.Clinics.EditClinic";
+            public const string Remove = "Permissions.Clinics.RemoveClinic";
         }
 
         public static class Reviews
         {
-            public const string View = "RV.V";
-            public const string Create = "RV.C";
-            public const string Edit = "RV.E";
-            public const string Delete = "RV.D";
+            public const string View = "Permissions.Reviews.View";
+            public const string Create = "Permissions.Reviews.Create";
+            public const string Edit = "Permissions.Reviews.Edit";
+            public const string Delete = "Permissions.Reviews.Delete";
+        }
+
+        public static class Chatbot
+        {
+            public const string Ask = "Permissions.Chatbot.Ask";
         }
 
         public static class Contacts
         {
-            public const string View = "CT.V";
+            public const string View = "Permissions.Contacts.View";
         }
 
         /// <summary>

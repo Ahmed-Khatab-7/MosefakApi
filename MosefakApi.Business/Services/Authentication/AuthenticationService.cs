@@ -50,8 +50,8 @@
                 await _userManager.UpdateAsync(user);  // Save the new token
             }
 
-            var (roles, permissions) = await GetRolesAndPermissions(user);
-            var jwtProviderResponse = _jwtProvider.GenerateToken(user, roles, permissions);
+            var roles = await GetRoles(user);
+            var jwtProviderResponse = _jwtProvider.GenerateToken(user, roles);
 
             var response = GetLoginResponse(user, jwtProviderResponse);
 
@@ -269,30 +269,11 @@
         }
 
 
-        private async Task<(IEnumerable<string> roles, IEnumerable<string> permissions)> GetRolesAndPermissions(AppUser user)
+        private async Task<IEnumerable<string>> GetRoles(AppUser user)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            var permissions = new List<string>();
 
-            foreach (var item in roles)
-            {
-                var role = await _roleManger.Roles.FirstOrDefaultAsync(x => x.Name!.ToLower() == item.ToLower());
-
-                if (role != null)
-                {
-                    var claimsRole = await _roleManger.GetClaimsAsync(role);
-
-                    if (claimsRole != null)
-                    {
-                        foreach (var claim in claimsRole)
-                        {
-                            permissions.Add(claim.Value);
-                        }
-                    }
-                }
-            }
-
-            return (roles, permissions);
+            return roles;
         }
 
     }

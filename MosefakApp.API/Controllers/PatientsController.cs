@@ -14,7 +14,7 @@
         }
 
         [HttpGet("profile")]
-        [HasPermission(Permissions.Patients.ViewProfile)]
+        [RequiredPermission(Permissions.Patients.ViewProfile)]
         public async Task<ActionResult<UserProfileResponse>> PatientProfile()
         {
             int userId = User.GetUserId();
@@ -25,7 +25,7 @@
         }
 
         [HttpPut]
-        [HasPermission(Permissions.Patients.EditProfile)]
+        [RequiredPermission(Permissions.Patients.EditProfile)]
         public async Task<ActionResult<UserProfileResponse>> UpdatePatientProfile([FromBody] UpdatePatientProfileRequest request)
         {
             int userId = User.GetUserId();
@@ -36,7 +36,7 @@
         }
 
         [HttpPost("profile/image")]
-        [HasPermission(Permissions.Patients.UploadProfileImage)]
+        [RequiredPermission(Permissions.Patients.UploadProfileImage)]
         public async Task<ActionResult<bool>> UploadProfileImageAsync(IFormFile imageFile, CancellationToken cancellationToken = default)
         {
             int patientId = User.GetUserId();
