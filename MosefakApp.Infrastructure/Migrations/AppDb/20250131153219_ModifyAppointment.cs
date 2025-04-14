@@ -10,31 +10,31 @@ namespace MosefakApp.Infrastructure.Migrations.AppDb
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "IsPaid",
-                table: "Appointments");
+            //migrationBuilder.DropColumn(
+            //    name: "IsPaid",
+            //    table: "Appointments");
 
-            migrationBuilder.AddColumn<string>(
-                name: "PaymentStatus",
-                table: "Appointments",
-                type: "nvarchar(max)",
-                nullable: false,
-                defaultValue: "");
+            //migrationBuilder.AddColumn<string>(
+            //    name: "PaymentStatus",
+            //    table: "Appointments",
+            //    type: "nvarchar(max)",
+            //    nullable: false,
+            //    defaultValue: "");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "PaymentStatus",
-                table: "Appointments");
+            //migrationBuilder.DropColumn(
+            //    name: "PaymentStatus",
+            //    table: "Appointments");
 
-            migrationBuilder.AddColumn<bool>(
-                name: "IsPaid",
-                table: "Appointments",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
+            //migrationBuilder.AddColumn<bool>(
+            //    name: "IsPaid",
+            //    table: "Appointments",
+            //    type: "bit",
+            //    nullable: false,
+            //    defaultValue: false);
         }
     }
 }

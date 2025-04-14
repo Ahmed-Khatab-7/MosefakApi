@@ -14,6 +14,8 @@
 
             builder.HasIndex(x => new { x.DoctorId, x.StartDate, x.EndDate }).IsUnique();
 
+            builder.Property(x => x.ProblemDescription).HasMaxLength(256).IsRequired(false);
+            builder.Property(x => x.CancellationReason).HasMaxLength(256).IsRequired(false);
         }
     }
 }
