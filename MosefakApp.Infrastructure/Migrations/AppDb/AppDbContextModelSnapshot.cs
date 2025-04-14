@@ -17,7 +17,7 @@ namespace MosefakApp.Infrastructure.Migrations.AppDb
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.1")
+                .HasAnnotation("ProductVersion", "9.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -225,7 +225,7 @@ namespace MosefakApp.Infrastructure.Migrations.AppDb
 
                     b.HasIndex("DoctorId");
 
-                    b.ToTable("Awards");
+                    b.ToTable("Awards", (string)null);
                 });
 
             modelBuilder.Entity("MosefakApp.Domains.Entities.Clinic", b =>
@@ -304,7 +304,7 @@ namespace MosefakApp.Infrastructure.Migrations.AppDb
 
                     b.HasIndex("DoctorId");
 
-                    b.ToTable("Clinics");
+                    b.ToTable("Clinics", (string)null);
                 });
 
             modelBuilder.Entity("MosefakApp.Domains.Entities.ContactUs", b =>
@@ -351,7 +351,7 @@ namespace MosefakApp.Infrastructure.Migrations.AppDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("ContactUs");
+                    b.ToTable("ContactUs", (string)null);
                 });
 
             modelBuilder.Entity("MosefakApp.Domains.Entities.Doctor", b =>
@@ -405,7 +405,7 @@ namespace MosefakApp.Infrastructure.Migrations.AppDb
 
                     b.HasKey("Id");
 
-                    b.ToTable("Doctors");
+                    b.ToTable("Doctors", (string)null);
                 });
 
             modelBuilder.Entity("MosefakApp.Domains.Entities.Education", b =>
@@ -481,7 +481,7 @@ namespace MosefakApp.Infrastructure.Migrations.AppDb
 
                     b.HasIndex("DoctorId");
 
-                    b.ToTable("Educations");
+                    b.ToTable("Educations", (string)null);
                 });
 
             modelBuilder.Entity("MosefakApp.Domains.Entities.Experience", b =>
@@ -556,7 +556,7 @@ namespace MosefakApp.Infrastructure.Migrations.AppDb
 
                     b.HasIndex("DoctorId");
 
-                    b.ToTable("Experiences");
+                    b.ToTable("Experiences", (string)null);
                 });
 
             modelBuilder.Entity("MosefakApp.Domains.Entities.Identity.AppUser", b =>
@@ -646,7 +646,7 @@ namespace MosefakApp.Infrastructure.Migrations.AppDb
                         .IsUnique()
                         .HasFilter("[Email] IS NOT NULL");
 
-                    b.ToTable("AppUser");
+                    b.ToTable("AppUser", (string)null);
                 });
 
             modelBuilder.Entity("MosefakApp.Domains.Entities.Payment", b =>
@@ -1019,7 +1019,7 @@ namespace MosefakApp.Infrastructure.Migrations.AppDb
 
                             b1.HasKey("AppUserId");
 
-                            b1.ToTable("AppUser");
+                            b1.ToTable("AppUser", (string)null);
 
                             b1.WithOwner("AppUser")
                                 .HasForeignKey("AppUserId");

@@ -25,5 +25,4 @@
         // 🔹 Utility Methods
         Task AutoCancelUnpaidAppointments(); // Handled by Hangfire
     }
-
 }

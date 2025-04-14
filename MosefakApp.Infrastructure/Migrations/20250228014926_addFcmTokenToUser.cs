@@ -10,22 +10,22 @@ namespace MosefakApp.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "FcmToken",
-                schema: "Security",
-                table: "Users",
-                type: "nvarchar(max)",
-                nullable: false,
-                defaultValue: "");
+            //migrationBuilder.AddColumn<string>(
+            //    name: "FcmToken",
+            //    schema: "Security",
+            //    table: "Users",
+            //    type: "nvarchar(max)",
+            //    nullable: false,
+            //    defaultValue: "");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "FcmToken",
-                schema: "Security",
-                table: "Users");
+            //migrationBuilder.DropColumn(
+            //    name: "FcmToken",
+            //    schema: "Security",
+            //    table: "Users");
         }
     }
 }

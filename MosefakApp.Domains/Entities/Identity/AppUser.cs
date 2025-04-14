@@ -16,5 +16,6 @@
         [NotMapped]
         public int Age => DateOfBirth.HasValue ? (int)((DateTime.UtcNow - DateOfBirth.Value).TotalDays / 365.25) : 0;
 
+        public UserType UserType { get; set; } = UserType.Patient;
     }
 }

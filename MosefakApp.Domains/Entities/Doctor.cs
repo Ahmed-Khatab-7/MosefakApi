@@ -5,7 +5,7 @@
         public int AppUserId { get; set; } // to get another info like(email,phone,age,etc) from another database by using AppUserId
         public string LicenseNumber { get; set; } = null!;
         public string AboutMe { get; set; } = null!;
-        public int NumberOfReviews { get; set; } = 0; // denormlized property for best performance  
+        public int NumberOfReviews { get; set; } = 0; // denormlized peroprty for best performance  
         
         [NotMapped]
         public int TotalYearsOfExperience => CalculateTotalExperience();

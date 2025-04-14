@@ -13,6 +13,9 @@
                 .HasConversion(new EnumToStringConverter<Gender>());
 
             builder.HasIndex(x => x.Email).IsUnique(); 
+
+            builder.Property(x=> x.UserType)
+                   .HasConversion(new EnumToStringConverter<UserType>());
         }
     }
 }

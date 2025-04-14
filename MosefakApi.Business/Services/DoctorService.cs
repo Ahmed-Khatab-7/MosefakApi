@@ -235,6 +235,10 @@
                     await _userManager.RemoveFromRolesAsync(user, roles);
                     await _userManager.AddToRoleAsync(user, DefaultRole.Doctor);
 
+                    // convert usertype from PendingDoctor to Doctor after complete
+                    user.UserType = UserType.Doctor;
+                    await _userManager.UpdateAsync(user);
+
                     await transaction.CommitAsync();
                 }
                 catch (Exception ex)

@@ -77,6 +77,7 @@
                 Email = registerRequest.Email,
                 UserName = registerRequest.Email.Split('@')[0],
                 PhoneNumber = registerRequest.PhoneNumber,
+                UserType = registerRequest.IsDoctor ? UserType.PendingDoctor : UserType.Patient,
             };
 
             var result = await _userManager.CreateAsync(appUser, registerRequest.Password);
