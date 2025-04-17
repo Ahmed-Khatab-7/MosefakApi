@@ -6,6 +6,7 @@
         public string FullName { get; set; } = null!;
         public string ImagePath { get; set; } = null!;
         public string AboutMe { get; set; } = null!;
+        public double Rating { get; set; } 
         public int NumberOfReviews { get; set; }
         public int TotalYearsOfExperience { get; set; }
         public List<SpecializationResponse> Specializations { get; set; } = new();
