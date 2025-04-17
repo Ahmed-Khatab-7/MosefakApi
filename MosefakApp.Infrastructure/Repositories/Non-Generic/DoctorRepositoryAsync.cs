@@ -38,6 +38,7 @@
                 .OrderByDescending(d => d.AverageRate)
                 .ThenByDescending(d => d.ReviewCount)
                 .Take(10)
+                .AsSplitQuery()
                 .ToListAsync();
 
            if(query is not null)
@@ -64,6 +65,7 @@
                     TotalYearsOfExperience = d.TotalYearsOfExperience,
                     Specializations = d.Specializations.ToList(),
                     NumberOfReviews = d.ReviewCount,
+                    Rating = d.AverageRate,
                 })
                 .ToList();
             }

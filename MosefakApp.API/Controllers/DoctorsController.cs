@@ -107,7 +107,7 @@
 
         // ✅ Get doctor profile (Authenticated Doctor)
         [HttpGet("profile")]
-        [RequiredPermission(Permissions.Doctors.ViewProfile)]
+        [RequiredPermission(Permissions.Doctors.ViewProfile)] // Permissions.Doctors.ViewDoctorProfile
         public async Task<ActionResult<DoctorProfileResponse>> GetDoctorProfile()
         {
             var userId = User.GetUserId();

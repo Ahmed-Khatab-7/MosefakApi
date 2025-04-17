@@ -32,7 +32,7 @@
 
             // Fetch paginated doctors with related entities
             (var doctors, var totalCount) = await doctorRepo.GetAllAsync(
-                query => query.Include(x => x.Experiences).Include(x => x.Specializations),
+                query => query.Include(x => x.Experiences).Include(x => x.Specializations).Include(x => x.Reviews),
                 pageNumber,
                 pageSize);
 
@@ -1922,6 +1922,7 @@
                 ImagePath = doctorImagePath,
                 NumberOfReviews = doctor.NumberOfReviews,
                 TotalYearsOfExperience = doctor.TotalYearsOfExperience,
+                Rating = doctor.Reviews.Any() ? doctor.Reviews.Average(r => r.Rate) : 0,
                 Specializations = doctor.Specializations.Select(x => new SpecializationResponse
                 {
                     Id = x.Id.ToString(),
@@ -1952,6 +1953,7 @@
                 NumberOfReviews = doctor.NumberOfReviews,
                 TotalYearsOfExperience = doctor.TotalYearsOfExperience,
                 AboutMe = doctor.AboutMe,
+                Rating = doctor.Reviews.Any() ? doctor.Reviews.Average(r => r.Rate) : 0,
                 AppointmentTypes = doctor.AppointmentTypes.Select(x => new AppointmentTypeResponse
                 {
                     ConsultationFee = x.ConsultationFee,
