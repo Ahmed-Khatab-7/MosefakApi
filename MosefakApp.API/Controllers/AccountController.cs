@@ -7,67 +7,79 @@ using System.Security.Claims;
 namespace MosefakApp.API.Controllers
 {
     [ApiController]
+    [AllowAnonymousPermission]
     [Route("api/[controller]")]
-    public class AccountController : ControllerBase
+    public class accountController : ControllerBase
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly SignInManager<AppUser> _signInManager;
+        private readonly IJwtProvider _jwtProvider;
 
-        public AccountController(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager)
+        public accountController(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IJwtProvider jwtProvider)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _jwtProvider = jwtProvider;
         }
 
         // GET /api/account/google-login
         [HttpGet("google-login")]
+        [AllowAnonymousPermission]
         public IActionResult GoogleLogin(string returnUrl = "/")
         {
-            var redirectUrl = Url.Action(nameof(GoogleLoginCallback), "Account", new { returnUrl });
+            var redirectUrl = Url.Action(nameof(GoogleLoginCallback), "account", new { returnUrl });
             var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
             return Challenge(properties, "Google");
         }
 
         // GET /api/account/google-callback
         [HttpGet("google-callback")]
+        [AllowAnonymousPermission]
         public async Task<IActionResult> GoogleLoginCallback(string returnUrl = "/")
         {
-            var authResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            if (!authResult.Succeeded)
+            // Ensure the return URL is local to prevent open redirect vulnerabilities
+            if (!Url.IsLocalUrl(returnUrl))
             {
-                // External login failed
-                return Redirect("/login?error=external_auth_failed");
+                returnUrl = "/";
             }
 
-            // Extract user claims from Google
-            var externalUser = authResult.Principal;
-            var email = externalUser.FindFirstValue(ClaimTypes.Email);
-            var name = externalUser.FindFirstValue(ClaimTypes.Name);
+            // Get the external login information from Google
+            var externalLoginInfo = await _signInManager.GetExternalLoginInfoAsync();
+            if (externalLoginInfo == null)
+            {
+                return BadRequest(new { error = "External authentication failed." });
+            }
 
-            // Check if user exists in local Identity DB
+            // Extract the email from the Google login
+            var email = externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Email);
+            if (string.IsNullOrEmpty(email))
+            {
+                return BadRequest(new { error = "Email not found in Google account." });
+            }
+
+            // Check if the user already exists
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
             {
-                // Register new user with Google account
+                // Create a new user if it doesn't exist
                 user = new AppUser
                 {
                     UserName = email,
                     Email = email
-                    // Optionally store name in user fields if you have them
                 };
                 var createResult = await _userManager.CreateAsync(user);
                 if (!createResult.Succeeded)
                 {
-                    return Redirect("/login?error=create_user_failed");
+                    return BadRequest(new { error = "Failed to create user." });
                 }
-
-                // Optionally assign a role (Patient, etc.)
-                // await _userManager.AddToRoleAsync(user, "Patient");
             }
 
-            // Log the user in
-            await _signInManager.SignInAsync(user, isPersistent: false);
-            return Redirect(returnUrl);
+            // Generate JWT token for the user
+            var roles = await _userManager.GetRolesAsync(user);
+            var token = _jwtProvider.GenerateToken(user, roles);
+
+            // Return the generated token as JSON response
+            return Ok(new { token });
         }
     }
 }

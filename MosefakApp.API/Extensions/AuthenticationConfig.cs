@@ -1,4 +1,6 @@
-﻿namespace MosefakApp.API.Extensions
+﻿using Microsoft.AspNetCore.Authentication.OAuth;
+
+namespace MosefakApp.API.Extensions
 {
     public static class AuthenticationConfig
     {
@@ -28,7 +30,36 @@
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtOptions.Key))
                 };
+            })
+            .AddGoogle(googleOptions =>
+            {
+                googleOptions.ClientId = configuration["Authentication:Google:ClientId"];
+                googleOptions.ClientSecret = configuration["Authentication:Google:ClientSecret"];
+                googleOptions.CallbackPath = new PathString("/api/account/google-callback");
+
+                googleOptions.Events = new OAuthEvents
+                {
+                    OnRedirectToAuthorizationEndpoint = context =>
+                    {
+                        var builder = new UriBuilder(context.RedirectUri)
+                        {
+                            Host = "yth3d4dbpe.eu-west-1.awsapprunner.com", // Ensure the correct domain
+                            Scheme = "https"
+                        };
+                        context.RedirectUri = builder.Uri.ToString();
+                        context.Response.Redirect(context.RedirectUri);
+                        return Task.CompletedTask;
+                    },
+                    OnRemoteFailure = context =>
+                    {
+                        // Handle error gracefully
+                        context.Response.Redirect("/login?error=google_auth_failed");
+                        context.HandleResponse();
+                        return Task.CompletedTask;
+                    }
+                };
             });
+
 
             return services;
         }
