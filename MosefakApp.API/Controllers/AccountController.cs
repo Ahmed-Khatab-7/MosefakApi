@@ -7,7 +7,6 @@ using System.Security.Claims;
 namespace MosefakApp.API.Controllers
 {
     [ApiController]
-    [AllowAnonymousPermission]
     [Route("api/[controller]")]
     public class accountController : ControllerBase
     {

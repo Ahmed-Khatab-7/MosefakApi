@@ -10,6 +10,12 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+
+    // This forces consistent enum handling across all serialization contexts
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.JsonSerializerOptions.NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals;
+    options.JsonSerializerOptions.WriteIndented = false; // For production
 });
 
 builder.Services.OptionsPatternConfig(builder.Configuration); // belong IOptions Pattern
