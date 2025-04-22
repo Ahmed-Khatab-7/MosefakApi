@@ -18,7 +18,7 @@ namespace MosefakApi.Business.Services.Image
         public async Task<string> UploadImageOnServer(IFormFile image, bool deleteIfExist = false, string oldPath = null, CancellationToken cancellationToken = default)
         {
 
-            var folderPath = Path.Combine(_basePath);
+            var folderPath = Path.Combine(_basePath, "images");
             Directory.CreateDirectory(folderPath); // Ensure the folder exists
 
             if (deleteIfExist && oldPath is not null)
