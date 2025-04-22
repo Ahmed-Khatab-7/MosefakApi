@@ -85,6 +85,7 @@ app.UseHttpsRedirection();
 app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin());
 
 //app.UseStaticFiles();  // it's very very Important after added wwwroot folder and folder of images that belong each entity. 
+
 app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
@@ -92,6 +93,7 @@ app.UseStaticFiles(new StaticFileOptions
         ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=600");
     }
 });
+
 // ✅ Log every request in a structured way
 app.UseSerilogRequestLogging();
 
