@@ -167,7 +167,7 @@
         [FromQuery] int pageSize = 10)
         {
             var userId = User.GetUserId();
-            var query = await _doctorService.GetPastAppointmentsAsync(userId);
+            var query = await _doctorService.GetPastAppointmentsAsync(userId, pageNumber, pageSize);
 
             if (query is not null)
             {
@@ -206,7 +206,7 @@
             [FromQuery] int pageSize = 10)
         {
             var userId = User.GetUserId();
-            var query = await _doctorService.GetSpecializations(userId);
+            var query = await _doctorService.GetSpecializations(userId, pageNumber, pageSize);
             if(query != null)
                 query.Data.ToList().ForEach(s => s.Id = ProtectId(s.Id));
             return Ok(query);
@@ -323,7 +323,7 @@
         [FromQuery] int pageSize = 10)
         {
             var userId = User.GetUserId();
-            var query = await _doctorService.GetAwards(userId);
+            var query = await _doctorService.GetAwards(userId, pageNumber, pageSize);
             if (query != null)
                 query.Data.ToList().ForEach(s => s.Id = ProtectId(s.Id));
             return Ok(query);
@@ -370,7 +370,7 @@
         [FromQuery] int pageSize = 10)
         {
             var userId = User.GetUserId();
-            var query = await _doctorService.GetEducations(userId);
+            var query = await _doctorService.GetEducations(userId, pageNumber, pageSize);
             if (query != null)
                 query.Data.ToList().ForEach(s => s.Id = ProtectId(s.Id));
             return Ok(query);
@@ -417,7 +417,7 @@
         [FromQuery] int pageSize = 10)
         {
             var userId = User.GetUserId();
-            var query = await _doctorService.GetExperiences(userId);
+            var query = await _doctorService.GetExperiences(userId, pageNumber, pageSize);
             if (query != null)
                 query.Data.ToList().ForEach(s => s.Id = ProtectId(s.Id));
             return Ok(query);
@@ -504,7 +504,7 @@
             var unprotectedDoctorId = UnprotectId(doctorId);
             if (unprotectedDoctorId == null) return BadRequest("Invalid Doctor ID");
 
-            var query = await _doctorService.GetDoctorClinicsAsync(unprotectedDoctorId.Value);
+            var query = await _doctorService.GetDoctorClinicsAsync(unprotectedDoctorId.Value, pageNumber, pageSize);
             query.Data.ToList().ForEach(c => c.Id = ProtectId(c.Id));
             query.Data.ToList().ForEach(c => c.WorkingTimes.ForEach(x => x.Id = ProtectId(x.Id)));
             query.Data.ToList().ForEach(c => c.WorkingTimes.ForEach(x => x.Periods.ForEach(p => p.Id = ProtectId(p.Id))));
@@ -520,7 +520,7 @@
             [FromQuery] int pageSize = 10)
         {
             var doctorId = User.GetUserId();
-            var query = await _doctorService.GetDoctorClinicsForDoctorAsync(doctorId);
+            var query = await _doctorService.GetDoctorClinicsForDoctorAsync(doctorId, pageNumber, pageSize);
 
             query.Data.ToList().ForEach(c => c.Id = ProtectId(c.Id));
             query.Data.ToList().ForEach(c => c.WorkingTimes.ForEach(x => x.Id = ProtectId(x.Id)));
