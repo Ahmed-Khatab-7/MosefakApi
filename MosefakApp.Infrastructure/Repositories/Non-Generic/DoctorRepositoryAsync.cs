@@ -61,7 +61,9 @@
                 {
                     Id = d.Id.ToString(),
                     FullName = userDetails.ContainsKey(d.AppUserId) ? userDetails[d.AppUserId].FullName : "Unknown",
-                    ImagePath = userDetails.ContainsKey(d.AppUserId) ? $"{_baseUrl}/images/{userDetails[d.AppUserId].ImagePath}" : $"{_baseUrl}default.jpg",
+                    ImagePath = userDetails.ContainsKey(d.AppUserId) && !string.IsNullOrEmpty(userDetails[d.AppUserId].ImagePath)
+                            ? $"{_baseUrl}{userDetails[d.AppUserId].ImagePath}"
+                            : $"{_baseUrl}/images/default.jpg",
                     TotalYearsOfExperience = d.TotalYearsOfExperience,
                     Specializations = d.Specializations.ToList(),
                     NumberOfReviews = d.ReviewCount,
