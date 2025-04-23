@@ -301,6 +301,9 @@ namespace MosefakApi.Business.Services.User
             if (user is null)
                 throw new ItemNotFound("User not found");
 
+            if (user.UserType == UserType.Admin) 
+                throw new BadRequest("Admin accounts cannot be deleted");
+
             user.IsDeleted = !user.IsDeleted;
 
             var result = await _userManager.UpdateAsync(user);

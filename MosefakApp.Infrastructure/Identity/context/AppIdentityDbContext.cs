@@ -13,7 +13,7 @@
 
             builder.ApplyConfiguration(new AppUserConfig());
 
-            builder.Entity<AppUser>().HasQueryFilter(x => !x.IsDeleted);
+            builder.Entity<AppUser>().HasQueryFilter(x => !x.IsDeleted && x.UserType != UserType.Admin);
             builder.Entity<AppRole>().HasQueryFilter(x => !x.IsDeleted);
 
             builder.Entity<AppUser>().ToTable(name: "Users", schema: "Security");

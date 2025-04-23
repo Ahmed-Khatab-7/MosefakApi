@@ -9,6 +9,9 @@
         PendingDoctor,
 
         [EnumMember(Value = "Patient")]
-        Patient
+        Patient,
+
+        [EnumMember(Value = "Admin")]
+        Admin
     }
 }

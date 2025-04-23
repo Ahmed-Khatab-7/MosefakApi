@@ -6,13 +6,10 @@
         {
             if (!userManager.Users.Any())
             {
-                var hasher = new PasswordHasher<AppUser>();
 
                 foreach (var user in LoadUsers())
                 {
-                    var passwordHashed = hasher.HashPassword(user, DefaultUser.AdminPassword);
-
-                    await userManager.CreateAsync(user, passwordHashed);
+                    await userManager.CreateAsync(user, user.PasswordHash!);
                 }
             }
 
@@ -65,7 +62,8 @@
                         Country = DefaultUser.State,
                         City = DefaultUser.City,
                         Street = DefaultUser.Street,
-                    }
+                    },
+                    UserType = UserType.Admin
                 }
             };
         }
@@ -90,6 +88,12 @@
                 {
                     Name = DefaultRole.Patient,
                     ConcurrencyStamp = DefaultRole.PatientConcurrencyStamp,
+                    CreationTime = DateTime.UtcNow,
+                },
+                 new AppRole
+                {
+                    Name = DefaultRole.PendingDoctor,
+                    ConcurrencyStamp = DefaultRole.PendingDoctorConcurrencyStamp,
                     CreationTime = DateTime.UtcNow,
                 }
             };
