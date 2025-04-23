@@ -8,7 +8,7 @@
         public ContentResult ConfirmEmailRedirect([FromQuery] string userId, [FromQuery] string code)
         {
             var appLink = $"mosefak://confirm-email?userId={userId}&code={code}";
-            var webLink = $"https://myapp.com/auth/confirm-email?userId={userId}&code={code}";
+            var webLink = $"https://localhost:4200/auth/confirm-email?userId={userId}&code={code}";
 
             var html = $@"
             <!DOCTYPE html>

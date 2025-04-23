@@ -4,9 +4,12 @@
     public class AuthenticationController : ApiBaseController
     {
         private readonly IAuthenticationService _authenticationService;
-        public AuthenticationController(IAuthenticationService authenticationService)
+        private readonly IIdProtectorService _idProtectorService;
+
+        public AuthenticationController(IAuthenticationService authenticationService, IIdProtectorService idProtectorService)
         {
             _authenticationService = authenticationService;
+            _idProtectorService = idProtectorService;
         }
 
         [HttpPost("Login")]
@@ -31,9 +34,11 @@
         [AllowAnonymousPermission]
         public async Task<IActionResult> ConfirmEmailAsync([FromQuery] ConfirmEmailRequest request)
         {
-            await _authenticationService.ConfirmEmailAsync(request);
+            var userId = await _authenticationService.ConfirmEmailAsync(request);
 
-            return Ok();
+            var protectedUserId = ProtectId(userId.ToString());
+
+            return Ok(protectedUserId);
         }
 
         [HttpPost("resend-confirmation-email")]
@@ -64,5 +69,9 @@
             return Ok();
         }
 
+        // 🔥 Reusable Helper Method for ID Protection
+        private int? UnprotectId(string protectedId) => _idProtectorService.UnProtect(protectedId);
+
+        private string ProtectId(string id) => _idProtectorService.Protect(int.Parse(id));
     }
 }

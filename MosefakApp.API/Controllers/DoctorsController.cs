@@ -257,11 +257,15 @@
 
         // ✅ Complete doctor profile
         [HttpPost("profile/complete")]
-        [RequiredPermission(Permissions.Doctors.CompleteProfile)]
-        public async Task<IActionResult> CompleteDoctorProfile([FromForm] CompleteDoctorProfileRequest request)
+        [AllowAnonymousPermission()]
+        public async Task<IActionResult> CompleteDoctorProfile([FromQuery] string userId, [FromForm] CompleteDoctorProfileRequest request)
         {
-            var userId = User.GetUserId();
-            await _doctorService.CompleteDoctorProfile(userId, request);
+            var unprotectedUserId = UnprotectId(userId);
+
+            if (unprotectedUserId == null)
+                return BadRequest("Invalid clinic ID");
+
+            await _doctorService.CompleteDoctorProfile(unprotectedUserId.Value, request);
             return Ok();
         }
 

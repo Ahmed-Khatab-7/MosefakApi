@@ -99,6 +99,7 @@
 
                 await SendConfirmationEmail(appUser, code);
 
+
                 // Added: wait 10 minutes; if user still not confirmed, delete them
                 _ = Task.Run(async () =>
                 {
@@ -117,7 +118,7 @@
             }
         }
 
-        public async Task ConfirmEmailAsync(ConfirmEmailRequest request)
+        public async Task<int> ConfirmEmailAsync(ConfirmEmailRequest request)
         {
             var user = await _userManager.FindByIdAsync(request.userId.ToString());
 
@@ -146,9 +147,7 @@
                 throw new BadRequest(string.Join(',', errors));
             }
 
-            //// Assign Registered Users to Default Role
-
-            //await _userManager.AddToRoleAsync(user, DefaultRole.Patient);
+            return user.Id;
         }
 
         public async Task ResendConfirmationEmail(ResendConfirmationEmailRequest request)
