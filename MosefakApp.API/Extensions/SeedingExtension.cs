@@ -27,7 +27,7 @@
             var roleManager = serviceProvider.GetRequiredService<RoleManager<AppRole>>();
             var identityContext = serviceProvider.GetRequiredService<AppIdentityDbContext>();
 
-         //   await services.Seed(userManager, roleManager, identityContext);
+            await services.Seed(userManager, roleManager, identityContext);
 
         }
     }

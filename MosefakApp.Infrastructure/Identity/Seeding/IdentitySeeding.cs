@@ -63,7 +63,8 @@
                         City = DefaultUser.City,
                         Street = DefaultUser.Street,
                     },
-                    UserType = UserType.Admin
+                    UserType = UserType.Admin,
+                    PasswordHash = DefaultUser.AdminPassword
                 }
             };
         }
