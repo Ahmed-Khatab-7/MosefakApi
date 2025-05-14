@@ -3,7 +3,6 @@
     public interface IAuthenticationService
     {
         Task<LoginResponse> Login(LoginRequest request);
-        Task<LoginResponse> FirebaseLoginAsync(FirebaseLoginRequest request);
         Task Register(RegisterRequest registerRequest);
         Task<int> ConfirmEmailAsync(ConfirmEmailRequest request);
         Task ResendConfirmationEmail(ResendConfirmationEmailRequest request); // to get on code that will use it for ConfirmEmailAsync method to confirm-email
