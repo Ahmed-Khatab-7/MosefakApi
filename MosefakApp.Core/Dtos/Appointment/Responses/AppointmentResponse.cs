@@ -1,8 +1,12 @@
-﻿namespace MosefakApp.Core.Dtos.Appointment.Responses
+﻿using System.Text.Json.Serialization;
+
+namespace MosefakApp.Core.Dtos.Appointment.Responses
 {
-    public class AppointmentResponse 
+    public class AppointmentResponse
     {
         public string Id { get; set; } = null!;
+
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public AppointmentStatus AppointmentStatus { get; set; }
         public string DoctorId { get; set; } = null!;
         public string DoctorFullName { get; set; } = null!;

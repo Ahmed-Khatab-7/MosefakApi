@@ -1,4 +1,8 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,6 +29,15 @@ builder.Services.AddMemoryCache();
 
 // ✅ Configure Serilog from `appsettings.json`
 builder.Host.UseCustomSerilog();
+
+var credPath = Path.Combine(
+    builder.Environment.ContentRootPath,
+    "Credentials",
+    "mosefak-firebase-credentials.json");
+FirebaseApp.Create(new AppOptions
+{
+    Credential = GoogleCredential.FromFile(credPath)
+});
 
 // Call Container here
 

@@ -53,7 +53,7 @@
             return new JwtProviderResponse()
             {
                 Token = token,
-                ExpireIn = _jwtSetting.lifeTime
+               
             };
         }
 
@@ -70,6 +70,7 @@
                     ValidateIssuerSigningKey = true,
                     ValidateIssuer = false,
                     ValidateAudience = false,
+                    ValidateLifetime = false,
                     ClockSkew = TimeSpan.Zero,
                 },
                 out SecurityToken validatedToken);

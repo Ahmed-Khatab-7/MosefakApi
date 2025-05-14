@@ -1,11 +1,17 @@
-﻿namespace MosefakApp.Core.Dtos.Appointment.Responses
+﻿using System.Text.Json.Serialization;
+
+namespace MosefakApp.Core.Dtos.Appointment.Responses
 {
     public class AppointmentDto
     {
         public string Id { get; set; } = null!;
         public DateTimeOffset StartTime { get; set; }
         public DateTimeOffset EndTime { get; set; }
+
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public AppointmentStatus Status { get; set; }  // "Upcoming", "Completed", "Canceled"
+
+
         public string? ProblemDescription { get; set; }
 
         // 🔹 Patient Information
