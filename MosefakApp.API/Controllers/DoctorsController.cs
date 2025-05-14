@@ -271,6 +271,7 @@
 
         [HttpPut("update-working-times/{clinicId}")]
         [RequiredPermission(Permissions.Doctors.UpdateWorkingTimesAsync)]
+        [Cached(duration: 0)] 
         public async Task<ActionResult<bool>> UpdateWorkingTimesAsync(string clinicId, IEnumerable<WorkingTimeRequest> workingTimes)
         {
             var unprotectedId = UnprotectId(clinicId);
@@ -500,6 +501,7 @@
         // ✅ Get all clinics of a doctor for patient
         [HttpGet("{doctorId}/clinics")]
         [RequiredPermission(Permissions.Clinics.View)]
+        [Cached(duration: 0)]
         public async Task<ActionResult<PaginatedResponse<ClinicResponse>>> GetDoctorClinicsAsync(
             string doctorId,
             [FromQuery] int pageNumber = 1,
@@ -519,6 +521,7 @@
         // ✅ Get all clinics of a doctor for doctor
         [HttpGet("clinics")]
         [RequiredPermission(Permissions.Clinics.View)]
+        [Cached(duration: 0)]
         public async Task<ActionResult<PaginatedResponse<ClinicResponse>>> GetDoctorClinicsAsync(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)

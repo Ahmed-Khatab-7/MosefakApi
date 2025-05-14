@@ -521,69 +521,95 @@
                 throw new BadRequest("Failed to upload doctor profile image.", ex);
             }
         }
+        
 
-
-        public async Task<bool> UpdateWorkingTimesAsync(int doctorId, int clinicId, IEnumerable<WorkingTimeRequest> workingTimes) // [Done]
+        public async Task<bool> UpdateWorkingTimesAsync(int doctorId, int clinicId, IEnumerable<WorkingTimeRequest> workingTimes)
         {
             // 🔹 Fetch clinic along with WorkingTimes & Periods
-            var clinic = await _unitOfWork.GetCustomRepository<IClinicRepository>().FirstOrDefaultAsync(x => x.Id == clinicId && 
-                                                                                        x.Doctor.AppUserId == doctorId, query => query.Include(x => x.WorkingTimes).ThenInclude(x => x.Periods).Include(x => x.Doctor));
+            var clinic = await _unitOfWork.GetCustomRepository<IClinicRepository>().FirstOrDefaultAsync(
+                x => x.Id == clinicId && x.Doctor.AppUserId == doctorId,
+                query => query.Include(x => x.WorkingTimes).ThenInclude(x => x.Periods).Include(x => x.Doctor));
 
             if (clinic is null)
                 throw new ItemNotFound("Clinic does not exist or you do not have permission to modify it.");
 
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            var strategy = _unitOfWork.CreateExecutionStrategy(); // ✅ Now using UnitOfWork method
 
-            try
+            return await strategy.ExecuteAsync(async () =>
             {
-                var existingWorkingTimes = clinic.WorkingTimes.ToList();
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
 
-                foreach (var request in workingTimes)
+                try
                 {
-                    var existingWorkingTime = existingWorkingTimes.FirstOrDefault(x => x.Day == request.Day);
+                    var existingWorkingTimes = clinic.WorkingTimes.ToList();
 
-                    if (existingWorkingTime == null)
+                    foreach (var request in workingTimes)
                     {
-                        // 🔹 If No Existing WorkingTime → Add New
-                        var newWorkingTime = new WorkingTime
-                        {
-                            ClinicId = clinicId,
-                            Day = request.Day,
-                            Periods = request.Periods.Select(p => new Period
-                            {
-                                StartTime = p.StartTime,
-                                EndTime = p.EndTime
-                            }).ToHashSet()
-                        };
+                        var existingWorkingTime = existingWorkingTimes.FirstOrDefault(x => x.Day == request.Day);
 
-                        clinic.WorkingTimes.Add(newWorkingTime);
-                    }
-                    else
-                    {
-                        // 🔹 If WorkingTime Exists → Update Periods
-                        existingWorkingTime.Periods.Clear(); // Remove old periods
-                        foreach (var periodRequest in request.Periods)
+                        if (existingWorkingTime == null)
                         {
-                            existingWorkingTime.Periods.Add(new Period
+                            // 🔹 If No Existing WorkingTime → Add New
+                            var newWorkingTime = new WorkingTime
                             {
-                                StartTime = periodRequest.StartTime,
-                                EndTime = periodRequest.EndTime
-                            });
+                                ClinicId = clinicId,
+                                Day = request.Day,
+                                Periods = request.Periods.Select(p => new Period
+                                {
+                                    StartTime = p.StartTime,
+                                    EndTime = p.EndTime
+                                }).ToHashSet()
+                            };
+
+                            clinic.WorkingTimes.Add(newWorkingTime);
+                        }
+                        else
+                        {
+                            // 🔹 If WorkingTime Exists → Update Periods
+                            // Remove existing periods before adding new ones
+                            var periodsToRemove = existingWorkingTime.Periods.ToList();
+                            foreach (var period in periodsToRemove)
+                            {
+                                await _unitOfWork.Repository<Period>().DeleteEntityAsync(period);
+                            }
+
+                            // Add new periods
+                            foreach (var periodRequest in request.Periods)
+                            {
+                                existingWorkingTime.Periods.Add(new Period
+                                {
+                                    StartTime = periodRequest.StartTime,
+                                    EndTime = periodRequest.EndTime
+                                });
+                            }
                         }
                     }
+
+                    // Commit changes
+                    var rowsAffected = await _unitOfWork.CommitAsync();
+
+                    // If rowsAffected is greater than 0, return true, otherwise false
+                    if (rowsAffected > 0)
+                    {
+                        await transaction.CommitAsync();
+                        return true;
+                    }
+
+                    // If no rows were affected, rollback and return false
+                    await transaction.RollbackAsync();
+                    return false;
                 }
-
-                var rowsAffected = await _unitOfWork.CommitAsync();
-                await transaction.CommitAsync();
-
-                return rowsAffected > 0;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                throw new Exception("Failed to update working times.", ex);
-            }
+                catch (Exception ex)
+                {
+                    // Rollback in case of error
+                    await transaction.RollbackAsync();
+                    // Log exception if needed
+                    throw new Exception("Failed to update working times.", ex);
+                }
+            });
         }
+
+
 
         public async Task<PaginatedResponse<DoctorResponse>> SearchDoctorsAsync(DoctorSearchFilter filter, int pageNumber = 1, int pageSize = 10)
         {
