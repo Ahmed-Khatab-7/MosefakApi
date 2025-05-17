@@ -15,6 +15,7 @@
         }
 
         [HttpPost("webhook")]
+        [AllowAnonymousPermission]
         public async Task<IActionResult> StripeWebhook()
         {
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();

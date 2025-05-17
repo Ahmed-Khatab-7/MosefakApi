@@ -1,4 +1,7 @@
-﻿namespace MosefakApi.Business.Services
+﻿
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+
+namespace MosefakApi.Business.Services
 {
     public class PatientService : IPatientService
     {
@@ -122,6 +125,40 @@
             }
         }
 
+        public async Task<PaginatedResponse<PatientViewModel>> GetPatientsAsync(int pageNumber = 1, int pageSize = 10)
+        {
+            var patinets = _userManager.Users.AsNoTracking()
+                                             .Where(x => x.UserType == UserType.Patient)
+                                             .AsQueryable();
+
+            int totalCount = await patinets.CountAsync();
+
+            pageNumber = Math.Max(1, pageNumber);
+
+            var items = await patinets
+             .Skip((pageNumber - 1) * pageSize)
+             .Take(pageSize)
+             .ToListAsync();
+
+            var response = new PaginatedResponse<PatientViewModel>()
+            {
+                CurrentPage = pageNumber,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+            };
+
+            if (items is null)
+            {
+                response.Data = [];
+                return response;
+            }
+
+            var itemsVm = _mapper.Map<List<PatientViewModel>>(items);
+
+            response.Data = itemsVm;
+
+            return response;
+        }
         private async Task<AppUser> CheckPatientExist(int patientId)
         {
             var user = await _userManager.FindByIdAsync(patientId.ToString());
@@ -148,5 +185,6 @@
                 throw new BadRequest("File size exceeds the 2MB limit.");
         }
 
+       
     }
 }

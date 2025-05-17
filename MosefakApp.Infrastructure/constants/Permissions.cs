@@ -82,6 +82,7 @@
             public const string ViewProfile = "Permissions.Patients.ViewProfile";
             public const string EditProfile = "Permissions.Patients.EditPatientProfile";
             public const string UploadProfileImage = "Permissions.Patients.UploadPatientProfileImage";
+            public const string View = "Permissions.Patients.View";
         }
 
         public static class Specializations

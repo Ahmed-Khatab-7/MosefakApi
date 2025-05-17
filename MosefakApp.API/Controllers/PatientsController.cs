@@ -45,5 +45,12 @@
 
             return Ok(response);
         }
+
+        [HttpGet]
+        [RequiredPermission(Permissions.Patients.View)]
+        public async Task<PaginatedResponse<PatientViewModel>> GetPatientsAsync(int pageNumber = 1, int pageSize = 10)
+        {
+            return await _patientService.GetPatientsAsync(pageNumber, pageSize);
+        }
     }
 }

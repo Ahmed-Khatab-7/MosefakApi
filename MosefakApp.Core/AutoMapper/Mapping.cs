@@ -70,6 +70,8 @@
 
             CreateMap<Education, EducationResponse>().ReverseMap();
             CreateMap<EducationRequest, Education>().ReverseMap();
+
+            CreateMap<AppUser,PatientViewModel>().ReverseMap();
         }
     }
 }
