@@ -246,14 +246,20 @@
                     }
 
                     // ✅ **Update appointment**
-                    await appointmentRepo.ExecuteUpdateAsync(
-                        x => x.Id == appointmentId,
-                        x => new Appointment
-                        {
-                            StartDate = startTimeOffset,
-                            EndDate = endTimeOffset,
-                            AppointmentStatus = AppointmentStatus.PendingApproval
-                        });
+
+                    appointment.StartDate = startTimeOffset;
+                    appointment.EndDate = endTimeOffset;
+                    appointment.AppointmentStatus = appointment.AppointmentStatus;
+
+                    await appointmentRepo.UpdateEntityAsync(appointment);
+                    //await appointmentRepo.ExecuteUpdateAsync(
+                    //    x => x.Id == appointmentId,
+                    //    x => new Appointment
+                    //    {
+                    //        StartDate = startTimeOffset,
+                    //        EndDate = endTimeOffset,
+                    //        AppointmentStatus = appointment.AppointmentStatus
+                    //    });
 
                     await _unitOfWork.CommitAsync(); // ✅ Commit changes **before** notifications
 
@@ -294,18 +300,26 @@
 
                 try
                 {
+                    //// 1️⃣ Retrieve the doctor with their appointment types.
+                    //var doctor = await _unitOfWork.GetCustomRepository<IDoctorRepositoryAsync>()
+                    //    .FirstOrDefaultAsync(x => x.Id == int.Parse(request.DoctorId), x => x.Include(x => x.AppointmentTypes));
+                    //// .ConfigureAwait(false);
+
                     // 1️⃣ Retrieve the doctor with their appointment types.
                     var doctor = await _unitOfWork.GetCustomRepository<IDoctorRepositoryAsync>()
-                        .FirstOrDefaultAsync(x => x.Id == int.Parse(request.DoctorId), x => x.Include(x => x.AppointmentTypes))
-                        .ConfigureAwait(false);
+                        .FirstOrDefaultAsync(x => x.Id == int.Parse(request.DoctorId));
 
                     if (doctor == null)
                     { _loggerService.LogWarning("Attempted to book an appointment with non-existent doctor {DoctorId}.", request.DoctorId);
                         throw new ItemNotFound("Doctor does not exist.");
                     }
                     // 2️⃣ Retrieve the specified appointment type.
-                    var appointmentType = doctor.AppointmentTypes.FirstOrDefault(a => a.Id.ToString() == request.AppointmentTypeId);
-                    
+                    //var appointmentType = doctor.AppointmentTypes.FirstOrDefault(a => a.Id == int.Parse(request.AppointmentTypeId));
+
+                    var appointmentType = await _unitOfWork.Repository<AppointmentType>()
+                                                           .FirstOrDefaultAsync(x => x.Id == int.Parse(request.AppointmentTypeId) &&
+                                                                                     x.DoctorId == int.Parse(request.DoctorId));
+
                     if (appointmentType == null)
                     {
                         _loggerService.LogWarning("Attempted to book an appointment with an invalid appointment type {AppointmentTypeId}.", request.AppointmentTypeId);

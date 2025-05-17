@@ -2,7 +2,7 @@
 {
     [Route("api/doctors")]
     [ApiController]
-    [Cached(duration: 600)] // 10 minutes
+  //  [Cached(duration: 600)] // 10 minutes
     [EnableRateLimiting(policyName: RateLimiterType.Concurrency)]
     public class DoctorsController : ApiBaseController
     {

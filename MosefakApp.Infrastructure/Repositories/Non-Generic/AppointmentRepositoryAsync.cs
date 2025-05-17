@@ -51,6 +51,8 @@
         {
             var overlappingAppointments = await _context.Appointments
                 .Where(a => a.DoctorId == doctorId &&
+                            a.AppointmentStatus != AppointmentStatus.CanceledByDoctor &&
+                            a.AppointmentStatus != AppointmentStatus.CanceledByPatient &&
                             a.StartDate < endDate &&
                             a.EndDate > startDate)
                 .ToListAsync();

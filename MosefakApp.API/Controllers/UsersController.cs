@@ -2,7 +2,7 @@
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Cached(duration: 600)] // 600/60 = 10 minutes
+  //  [Cached(duration: 600)] // 600/60 = 10 minutes
     [EnableRateLimiting(policyName: RateLimiterType.Concurrency)]
     public class UsersController : ControllerBase
     {
