@@ -79,8 +79,13 @@
 
             var userDetails = await _unitOfWork.GetCustomRepository<IDoctorRepositoryAsync>().GetUserDetailsAsync(reviewerIds);
 
+            var numberPatinets = await _unitOfWork.Repository<Appointment>()
+                .GetCountWithConditionAsync(x => x.DoctorId == doctorId &&
+                x.AppointmentStatus != AppointmentStatus.CanceledByDoctor &&
+                x.AppointmentStatus != AppointmentStatus.CanceledByPatient);
+
             // Map the results
-            return MapDoctorDetailResponse(doctor, userDetails);
+            return MapDoctorDetailResponse(doctor, userDetails, numberPatinets);
         }
 
         public async Task<List<DoctorResponse>?> TopTenDoctors()
@@ -1875,7 +1880,9 @@
             // 🔹 Fetch Appointments & Join with Patients in One Query
             (var appointments,var totalCount) = await _unitOfWork.GetCustomRepository<AppointmentRepositoryAsync>()
                 .GetAllAsync(
-                    x => x.Doctor.AppUserId == doctorId && (isUpcoming ? x.StartDate > now : x.StartDate < now),
+                    x => x.Doctor.AppUserId == doctorId && x.AppointmentStatus != AppointmentStatus.CanceledByDoctor &&
+                    x.AppointmentStatus != AppointmentStatus.CanceledByPatient 
+                    && (isUpcoming ? x.StartDate > now : x.StartDate < now),
                     query => query.Include(x => x.AppointmentType).Include(x => x.Doctor),
                     pageNumber,
                     pageSize
@@ -1961,8 +1968,10 @@
 
         private DoctorDetail MapDoctorDetailResponse(
            Doctor doctor,
-           Dictionary<int, (string FullName, string ImagePath)> userDetails)
+           Dictionary<int, (string FullName, string ImagePath)> userDetails,
+           long count)
         {
+
             var doctorFullName = userDetails.TryGetValue(doctor.AppUserId, out var doctorInfo)
                 ? doctorInfo.FullName
                 : "Unknown";
@@ -1979,6 +1988,7 @@
                 NumberOfReviews = doctor.NumberOfReviews,
                 TotalYearsOfExperience = doctor.TotalYearsOfExperience,
                 AboutMe = doctor.AboutMe,
+                TotalPatinets = count,
                 Rating = doctor.Reviews.Any() ? doctor.Reviews.Average(r => r.Rate) : 0,
                 AppointmentTypes = doctor.AppointmentTypes.Select(x => new AppointmentTypeResponse
                 {
@@ -2079,7 +2089,67 @@
             };
         }
 
-       
+        public async Task<PaginatedResponse<AppointmentPatinetDetail>> GetToDayAppointmentsAsync(int doctorId, int pageNumber = 1, int pageSize = 10)
+        {
+
+            // First, get today's date range (from start of day to end of day)
+            var today = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+
+            // Get appointments for today
+            var (appointments, totalCount) = await _unitOfWork.GetCustomRepository<AppointmentRepositoryAsync>()
+                .GetAllAsync(
+                    x => x.Doctor.AppUserId == doctorId &&
+                         x.AppointmentStatus != AppointmentStatus.CanceledByDoctor &&
+                         x.AppointmentStatus != AppointmentStatus.CanceledByPatient &&
+                         x.StartDate >= today &&
+                         x.EndDate < tomorrow,
+                    query => query
+                        .Include(x => x.AppointmentType)
+                        .Include(x => x.Doctor)
+                        .OrderBy(x => x.StartDate),  // Added ordering for better UX
+                    pageNumber,
+                    pageSize
+                );
+
+            // 🔹 Extract Patient IDs & Fetch Patients in a Single Call
+            var patientIds = appointments.Select(x => x.PatientId).ToHashSet(); // ⚡ Use HashSet for O(1) lookup
+            var patients = await _userManager.Users
+                .Where(x => patientIds.Contains(x.Id))
+                .Select(x => new { x.Id, x.PhoneNumber, x.FirstName, x.LastName, x.ImagePath })
+                .ToListAsync();
+
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            // 🔹 Convert Patients List to Dictionary for Fast Lookups
+            var patientDict = patients.ToDictionary(x => x.Id, x => x);
+
+            // 🔹 Map Appointments to DTOs Efficiently
+            var response = appointments.Select(item => new AppointmentPatinetDetail
+            {
+                Id = item.Id.ToString(),
+                ConsultationFee = item.AppointmentType.ConsultationFee,
+                VisitType = item.AppointmentType.VisitType,
+                Duration = item.AppointmentType.Duration,
+                StartTime = item.StartDate,
+                EndTime = item.EndDate,
+                ProblemDescription = item.ProblemDescription,
+                Status = item.AppointmentStatus,
+                PatientId = patientDict.TryGetValue(item.PatientId, out var user) ? user.Id.ToString() : null!,
+                PatientName = user?.FirstName! + " " + user?.LastName, // ✅ No need for empty string checks
+                PatientPhone = user?.PhoneNumber,
+                image = $"{_baseUrl}{user?.ImagePath}"
+
+            }).ToList();
+
+            return new PaginatedResponse<AppointmentPatinetDetail>
+            {
+                Data = response,
+                CurrentPage = pageNumber,
+                PageSize = pageSize,
+                TotalPages = totalPages
+            };
+        }
     }
 
 }

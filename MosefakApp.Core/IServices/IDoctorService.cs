@@ -22,6 +22,7 @@
         // 🔹 Doctor's Appointments
         Task<PaginatedResponse<AppointmentDto>> GetUpcomingAppointmentsAsync(int doctorId, int pageNumber = 1, int pageSize = 10);
         Task<PaginatedResponse<AppointmentDto>> GetPastAppointmentsAsync(int doctorId, int pageNumber = 1, int pageSize = 10);
+        Task<PaginatedResponse<AppointmentPatinetDetail>> GetToDayAppointmentsAsync(int doctorId, int pageNumber = 1, int pageSize = 10);
         Task<long> GetTotalAppointmentsAsync(int doctorId); // (For Analytics 🔥) // FromUserClaims
 
         // 🔹 Specializations & Experience

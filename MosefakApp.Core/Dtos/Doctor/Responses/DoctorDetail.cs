@@ -9,6 +9,7 @@
         public double Rating { get; set; } 
         public int NumberOfReviews { get; set; }
         public int TotalYearsOfExperience { get; set; }
+        public long TotalPatinets { get; set; }
         public List<SpecializationResponse> Specializations { get; set; } = new();
         public List<ClinicResponse> Clinics { get; set; } = new();
         public List<ReviewResponse> Reviews { get; set; } = new();

@@ -47,6 +47,7 @@
             public const string ViewTotalPatientsServed = "Permissions.Doctor.ViewTotalPatientsServed";
             public const string ViewEarningsReport = "Permissions.Doctor.ViewEarningsReport"; 
             public const string UpdateWorkingTimesAsync = "Permissions.Doctors.UpdateWorkingTimesAsync"; 
+            public const string GetToDayAppointments = "Permissions.Doctors.GetToDayAppointments"; 
         }
 
         public static class AppointmentTypes

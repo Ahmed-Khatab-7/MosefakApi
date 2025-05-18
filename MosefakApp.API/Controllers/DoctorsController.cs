@@ -158,6 +158,22 @@
             return Ok(query);
         }
 
+        [HttpGet("appointments/today")]
+       // [RequiredPermission(Permissions.Doctors.GetToDayAppointments)]
+        public async Task<PaginatedResponse<AppointmentPatinetDetail>> GetToDayAppointmentsAsync(int pageNumber = 1, int pageSize = 10)
+        {
+            var userId = User.GetUserId();
+
+            var query = await _doctorService.GetToDayAppointmentsAsync(userId, pageNumber, pageSize);
+
+            if (query is not null)
+            {
+                query.Data.ToList().ForEach(a => a.Id = ProtectId(a.Id));
+                query.Data.ToList().ForEach(a => a.PatientId = ProtectId(a.PatientId));
+            }
+
+            return query!;
+        }
 
         // ✅ Get past appointments
         [HttpGet("appointments/past")]
