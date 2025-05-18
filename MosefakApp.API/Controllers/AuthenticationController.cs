@@ -32,13 +32,22 @@
 
         [HttpPost("confirm-email")]
         [AllowAnonymousPermission]
-        public async Task<IActionResult> ConfirmEmailAsync([FromQuery] ConfirmEmailRequest request)
+        public async Task<IActionResult> ConfirmEmailAsync([FromBody] ConfirmEmailRequest request) // Changed from [FromQuery] to [FromBody]
         {
             var userId = await _authenticationService.ConfirmEmailAsync(request);
 
             var protectedUserId = ProtectId(userId.ToString());
 
             return Ok(protectedUserId);
+        }
+
+        [HttpPost("reset-password")]
+        [AllowAnonymousPermission]
+        public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordRequest request) // Changed to [FromBody] if not already
+        {
+            await _authenticationService.ResetPasswordAsync(request);
+
+            return Ok();
         }
 
         [HttpPost("resend-confirmation-email")]
@@ -56,15 +65,6 @@
         public async Task<IActionResult> ForgetPasswordAsync(ForgetPasswordRequest request)
         {
             await _authenticationService.ForgetPasswordAsync(request);
-
-            return Ok();
-        }
-
-        [HttpPost("reset-password")]
-        [AllowAnonymousPermission]
-        public async Task<IActionResult> ResetPasswordAsync(ResetPasswordRequest request)
-        {
-            await _authenticationService.ResetPasswordAsync(request);
 
             return Ok();
         }
