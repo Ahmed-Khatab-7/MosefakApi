@@ -252,14 +252,6 @@
                     appointment.AppointmentStatus = appointment.AppointmentStatus;
 
                     await appointmentRepo.UpdateEntityAsync(appointment);
-                    //await appointmentRepo.ExecuteUpdateAsync(
-                    //    x => x.Id == appointmentId,
-                    //    x => new Appointment
-                    //    {
-                    //        StartDate = startTimeOffset,
-                    //        EndDate = endTimeOffset,
-                    //        AppointmentStatus = appointment.AppointmentStatus
-                    //    });
 
                     await _unitOfWork.CommitAsync(); // ✅ Commit changes **before** notifications
 
@@ -300,10 +292,7 @@
 
                 try
                 {
-                    //// 1️⃣ Retrieve the doctor with their appointment types.
-                    //var doctor = await _unitOfWork.GetCustomRepository<IDoctorRepositoryAsync>()
-                    //    .FirstOrDefaultAsync(x => x.Id == int.Parse(request.DoctorId), x => x.Include(x => x.AppointmentTypes));
-                    //// .ConfigureAwait(false);
+                   
 
                     // 1️⃣ Retrieve the doctor with their appointment types.
                     var doctor = await _unitOfWork.GetCustomRepository<IDoctorRepositoryAsync>()
@@ -314,7 +303,6 @@
                         throw new ItemNotFound("Doctor does not exist.");
                     }
                     // 2️⃣ Retrieve the specified appointment type.
-                    //var appointmentType = doctor.AppointmentTypes.FirstOrDefault(a => a.Id == int.Parse(request.AppointmentTypeId));
 
                     var appointmentType = await _unitOfWork.Repository<AppointmentType>()
                                                            .FirstOrDefaultAsync(x => x.Id == int.Parse(request.AppointmentTypeId) &&

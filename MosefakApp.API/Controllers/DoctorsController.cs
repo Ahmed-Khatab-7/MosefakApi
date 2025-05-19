@@ -159,7 +159,7 @@
         }
 
         [HttpGet("appointments/today")]
-       // [RequiredPermission(Permissions.Doctors.GetToDayAppointments)]
+        [RequiredPermission(Permissions.Doctors.GetToDayAppointments)]
         public async Task<PaginatedResponse<AppointmentPatinetDetail>> GetToDayAppointmentsAsync(int pageNumber = 1, int pageSize = 10)
         {
             var userId = User.GetUserId();
