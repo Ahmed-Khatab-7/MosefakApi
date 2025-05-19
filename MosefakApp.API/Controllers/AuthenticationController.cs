@@ -41,15 +41,6 @@
             return Ok(protectedUserId);
         }
 
-        [HttpPost("reset-password")]
-        [AllowAnonymousPermission]
-        public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordRequest request) // Changed to [FromBody] if not already
-        {
-            await _authenticationService.ResetPasswordAsync(request);
-
-            return Ok();
-        }
-
         [HttpPost("resend-confirmation-email")]
         [AllowAnonymousPermission]
         public async Task<IActionResult> ResendConfirmationEmail(ResendConfirmationEmailRequest request)
@@ -60,13 +51,58 @@
         }
 
 
-        [HttpPost("forgot-password")]
-        [AllowAnonymousPermission]
-        public async Task<IActionResult> ForgetPasswordAsync(ForgetPasswordRequest request)
+        [HttpPost("forget-password")]
+        [AllowAnonymousPermission] // Or your preferred authorization
+        public async Task<IActionResult> ForgetPassword([FromBody] ForgetPasswordRequest request)
         {
-            await _authenticationService.ForgetPasswordAsync(request);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            try
+            {
+                await _authenticationService.ForgetPasswordAsync(request);
+                return Ok(new { message = "If your email address is registered, you will receive a password reset code shortly." });
+            }
+            catch (BadHttpRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            // Catch other exceptions as needed
+        }
 
-            return Ok();
+        [HttpPost("verify-reset-code")]
+        [AllowAnonymousPermission]
+        public async Task<IActionResult> VerifyResetCode([FromBody] VerifyResetCodeRequest request)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            try
+            {
+                await _authenticationService.VerifyResetCodeAsync(request);
+                // Upon success, the client should be redirected/allowed to go to the "enter new password" form.
+                return Ok(new { message = "Verification successful. You can now set a new password." });
+            }
+            catch (BadHttpRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            // Catch other exceptions
+        }
+
+
+
+        [HttpPost("reset-password")]
+        [AllowAnonymousPermission]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request) // DTO is updated (no 4-digit code)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            try
+            {
+                await _authenticationService.ResetPasswordAsync(request);
+                return Ok(new { message = "Your password has been reset successfully." });
+            }
+            catch (BadHttpRequestException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            // Catch other exceptions
         }
 
         // 🔥 Reusable Helper Method for ID Protection

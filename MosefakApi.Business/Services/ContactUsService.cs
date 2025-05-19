@@ -40,9 +40,7 @@
                 templateName: "ContactUsTemplate.html",
                 imageUrl: "https://yourdomain.com/logo.png",
                 header: "New Contact Message Received",
-                TextBody: $"Hello {user.FirstName},\n\nYour message has been received. We will contact you shortly.",
-                link: "https://yourdomain.com/contact",
-                linkTitle: "View Details"
+                TextBody: $"Hello {user.FirstName},\n\nYour message has been received. We will contact you shortly."
             );
 
             // Fire-and-forget email sending to avoid blocking the API response

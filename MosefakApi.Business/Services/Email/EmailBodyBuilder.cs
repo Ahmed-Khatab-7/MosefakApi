@@ -14,8 +14,6 @@
             string imageUrl,
             string header,
             string TextBody,
-            string link,
-            string linkTitle,
             // New optional parameters
             string verificationCode = null,
             string currentDate = null,
@@ -34,9 +32,7 @@
 
             body = body.Replace("[imageUrl]", imageUrl ?? string.Empty)
                        .Replace("[header]", header ?? string.Empty)
-                       .Replace("[TextBody]", TextBody ?? string.Empty) // This will be the main paragraph
-                       .Replace("[link]", link ?? string.Empty)
-                       .Replace("[Title]", linkTitle ?? string.Empty);
+                       .Replace("[TextBody]", TextBody ?? string.Empty); // This will be the main paragraph
 
             // Replace new placeholders if values are provided
             if (!string.IsNullOrEmpty(verificationCode))

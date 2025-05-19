@@ -13,6 +13,9 @@ namespace MosefakApi.Business.Services.Authentication
         private readonly ILogger<AuthenticationService> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private const int MaxVerificationAttempts = 5;
+        private const string MosefakLogoUrl = "https://mosefakapiss.runasp.net/images/mosefak-logo.png";
+        private const string PasswordResetPurposeToken = "ResetPassword";
+
 
         public AuthenticationService(UserManager<AppUser> userManger, SignInManager<AppUser> signInManager, IJwtProvider jwtProvider, RoleManager<AppRole> roleManger, IEmailSender emailSender, IEmailBodyBuilder emailBuilder, IHttpContextAccessor httpContextAccessor, ILogger<AuthenticationService> logger)
         {
@@ -188,26 +191,34 @@ namespace MosefakApi.Business.Services.Authentication
         }
 
 
-        public async Task ForgetPasswordAsync(ForgetPasswordRequest request) // DTO with Email
+        public async Task ForgetPasswordAsync(ForgetPasswordRequest request)
         {
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null)
             {
                 _logger.LogWarning($"Password reset attempt for non-existent email: {request.Email}");
-                return; // Don't reveal if user exists for security
+                // For security, don't reveal if the user exists. Silently return or throw a generic error if your API always returns something.
+                // For this example, we'll proceed as if an email would be sent (but it won't if user is null).
+                // A common practice is to always return a success-like message to prevent email enumeration.
+                return;
             }
-            if (!user.EmailConfirmed) throw new BadHttpRequestException("Please confirm your email before resetting password.");
 
+            if (!user.EmailConfirmed)
+            {
+                _logger.LogWarning($"Password reset attempt for unconfirmed email: {request.Email}");
+                throw new BadHttpRequestException("Please confirm your email address before attempting a password reset.");
+            }
 
             string fourDigitCode = GenerateVerificationCode();
             user.VerificationCode = fourDigitCode;
-            user.VerificationCodeExpiry = DateTime.UtcNow.AddHours(1); // 1-hour expiry for password reset
+            user.VerificationCodeExpiry = DateTime.UtcNow.AddHours(1); // Standard 1-hour expiry for the code itself
             user.VerificationAttempts = 0;
             await _userManager.UpdateAsync(user);
 
             _logger.LogInformation($"Password reset initiated for {user.Email}. Verification code: {fourDigitCode}");
-            await SendResetPasswordEmail(user, fourDigitCode);
+            await SendResetPasswordEmail(user, fourDigitCode); // This email now just contains the code
         }
+
 
         private async Task SendResetPasswordEmail(AppUser user, string verificationCode)
         {
@@ -215,62 +226,114 @@ namespace MosefakApi.Business.Services.Authentication
                          $"{_httpContextAccessor?.HttpContext?.Request.Scheme}://{_httpContextAccessor?.HttpContext?.Request.Host}";
 
             string currentUtc = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
-            string userLogin = HttpUtility.HtmlEncode(user.UserName);
+            string userLogin = HttpUtility.HtmlEncode(user.FirstName ?? user.Email?.Split('@')[0] ?? "N/A");
 
-            string textBody = "We received a request to reset your password. Please use the following 4-digit code:";
+            string textBody = "We received a request to reset your password. Please use the following 4-digit code on our platform to proceed:";
 
             var emailBody = await _emailBuilder.GenerateEmailBody(
-                templateName: "forgetPasswordTemplate.html",
-                imageUrl: $"{origin}/images/198340114.jpeg",
-                header: $"Hi, {HttpUtility.HtmlEncode(user.FirstName)}",
+                templateName: "forgetPasswordTemplate.html", // This template shows the 4-digit code
+                imageUrl: MosefakLogoUrl,
+                header: $"Hi, {HttpUtility.HtmlEncode(user.FirstName ?? "User")}",
                 TextBody: textBody,
-                link: $"{origin}/reset-password-page?email={HttpUtility.UrlEncode(user.Email)}", // Link to your frontend reset page
-                linkTitle: "Reset Password",
                 verificationCode: verificationCode,
                 currentDate: currentUtc,
                 username: userLogin
             );
 
-            await _emailSender.SendEmailAsync(user.Email, "🔑 Mosefak: Reset Your Password", emailBody);
-            _logger.LogInformation($"Password reset email sent to {user.Email}.");
+            await _emailSender.SendEmailAsync(user.Email, "🔑 Mosefak: Your Password Reset Code", emailBody);
+            _logger.LogInformation($"Password reset code email sent to {user.Email}.");
         }
 
-        public async Task ResetPasswordAsync(ResetPasswordRequest request) // DTO with Email, Code, NewPassword
+
+        public async Task VerifyResetCodeAsync(VerifyResetCodeRequest request)
         {
             var user = await _userManager.FindByEmailAsync(request.Email);
-            if (user == null) throw new BadHttpRequestException("User not found or invalid request.");
-
-            if (string.IsNullOrEmpty(user.VerificationCode) || user.VerificationCodeExpiry < DateTime.UtcNow)
+            if (user == null)
             {
-                throw new BadHttpRequestException("Password reset code is invalid or has expired.");
+                _logger.LogWarning($"Verify reset code attempt for non-existent email: {request.Email}");
+                throw new BadHttpRequestException("Invalid email or verification code.");
             }
+
+            if (string.IsNullOrEmpty(user.VerificationCode) || !user.VerificationCodeExpiry.HasValue)
+            {
+                _logger.LogWarning($"Verify reset code attempt for {request.Email} with no active code stored.");
+                throw new BadHttpRequestException("No active verification code found. Please request a new one.");
+            }
+
+            if (user.VerificationCodeExpiry < DateTime.UtcNow)
+            {
+                _logger.LogWarning($"Verify reset code attempt for {request.Email} with expired code. Stored Expiry: {user.VerificationCodeExpiry}");
+                throw new BadHttpRequestException("Verification code has expired. Please request a new one.");
+            }
+
             if (user.VerificationAttempts >= MaxVerificationAttempts)
             {
+                _logger.LogWarning($"Max verification attempts reached for reset code for email {request.Email}.");
                 throw new BadHttpRequestException("Maximum verification attempts reached. Please request a new code.");
             }
-            if (user.VerificationCode != request.code) // 'code' from your DTO
+
+            if (user.VerificationCode != request.Code)
             {
                 user.VerificationAttempts++;
                 await _userManager.UpdateAsync(user);
-                throw new BadHttpRequestException($"Invalid reset code. Attempts left: {MaxVerificationAttempts - user.VerificationAttempts}");
+                _logger.LogWarning($"Invalid reset code for email {request.Email}. Attempt {user.VerificationAttempts}/{MaxVerificationAttempts}.");
+                throw new BadHttpRequestException($"Invalid verification code. Attempts left: {MaxVerificationAttempts - user.VerificationAttempts}");
             }
 
-            // If 4-digit code is valid, then reset password with a standard Identity token
-            var identityToken = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var result = await _userManager.ResetPasswordAsync(user, identityToken, request.NewPassword);
+            // Code is valid. Mark it as "verified" for the next step.
+            // We'll re-purpose VerificationCode to store the actual Identity Password Reset Token.
+            // This token is what _userManager.ResetPasswordAsync needs.
+            var identityPasswordResetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            user.VerificationCode = identityPasswordResetToken; // Store the REAL token now
+            user.VerificationCodeExpiry = DateTime.UtcNow.AddMinutes(15); // User has 15 mins to complete the actual reset
+            user.VerificationAttempts = 0; // Reset attempts
+            await _userManager.UpdateAsync(user);
+
+            _logger.LogInformation($"4-digit reset code verified for {request.Email}. Identity reset token generated and stored temporarily.");
+            // No need to send another email here. Frontend proceeds to the "new password" form.
+        }
+
+
+        public async Task ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                _logger.LogWarning($"Actual password reset attempt for non-existent email: {request.Email}");
+                throw new BadHttpRequestException("Invalid request or user not found.");
+            }
+
+            // Check if the VerifyResetCode step was completed successfully and recently
+            // The user.VerificationCode should now hold the Identity Password Reset Token
+            if (string.IsNullOrEmpty(user.VerificationCode) || !user.VerificationCodeExpiry.HasValue || user.VerificationCodeExpiry < DateTime.UtcNow)
+            {
+                _logger.LogWarning($"Password reset attempt for {request.Email} without prior code verification or window expired. Stored Expiry: {user.VerificationCodeExpiry}");
+                throw new BadHttpRequestException("Password reset window has expired or code was not verified. Please start over.");
+            }
+
+            // The user.VerificationCode now holds the actual token generated in VerifyResetCodeAsync
+            var identityResetToken = user.VerificationCode;
+            var result = await _userManager.ResetPasswordAsync(user, identityResetToken, request.NewPassword);
 
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                throw new BadHttpRequestException($"Password reset failed: {errors}");
+                // Do NOT increment VerificationAttempts here as this stage is past the 4-digit code.
+                _logger.LogError($"Password reset failed for {user.Email} using Identity token: {errors}");
+                throw new BadHttpRequestException($"Password reset failed: {errors}. Please try the process again.");
             }
 
-            user.VerificationCode = null; // Clear the code
+            // Password reset was successful, clean up.
+            user.VerificationCode = null;
             user.VerificationCodeExpiry = null;
             user.VerificationAttempts = 0;
+            // Consider if you need to update security stamp or force logout other sessions
+            // await _userManager.UpdateSecurityStampAsync(user); 
             await _userManager.UpdateAsync(user);
 
-            _logger.LogInformation($"Password for user {user.Email} reset successfully.");
+            _logger.LogInformation($"Password for user {user.Email} has been reset successfully.");
+            // Optionally send a confirmation email that password was changed.
         }
 
 
@@ -294,12 +357,9 @@ namespace MosefakApi.Business.Services.Authentication
 
             var emailBody = await _emailBuilder.GenerateEmailBody(
                 templateName: "emailTamplate.html",
-                imageUrl: $"{origin}/images/198340114.jpeg",
+                imageUrl: MosefakLogoUrl,
                 header: $"Hi, {HttpUtility.HtmlEncode(appUser.FirstName ?? "User")}",
                 TextBody: textBody,
-                // Updated link to carry email - your frontend page at /confirm-email-page needs to handle this query parameter
-                link: $"{origin}/confirm-email-page?email={HttpUtility.UrlEncode(appUser.Email)}",
-                linkTitle: "Confirm Email",
                 verificationCode: verificationCode,
                 currentDate: currentUtc,
                 username: userLogin

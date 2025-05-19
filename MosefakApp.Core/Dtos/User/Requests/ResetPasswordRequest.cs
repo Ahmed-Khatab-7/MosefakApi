@@ -6,13 +6,18 @@
         [EmailAddress]
         public string Email { get; set; }
 
-        [Required]
-        [StringLength(4, MinimumLength = 4, ErrorMessage = "The verification code must be 4 digits.")]
-        [RegularExpression(@"^\d{4}$", ErrorMessage = "The verification code must be 4 digits.")]
-        public string code { get; set; } = null!; // Maintain your existing property name
+        // The 4-digit code is no longer submitted here; it's verified in the previous step.
+        // The actual Identity reset token will be generated server-side.
 
         [Required]
-        [StringLength(100, MinimumLength = 6)]
-        public string NewPassword { get; set; } = null!;
+        [DataType(DataType.Password)]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters long.")]
+        // Add other password complexity attributes if desired
+        public string NewPassword { get; set; }
+
+        [Required]
+        [DataType(DataType.Password)]
+        [Compare("NewPassword", ErrorMessage = "The new password and confirmation password do not match.")]
+        public string ConfirmPassword { get; set; } = null!;
     }
 }
