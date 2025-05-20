@@ -730,20 +730,24 @@
 
             foreach (var res in specializations)
             {
-                doctorResponse.Add(new DoctorResponse
+
+                if (userDictionary.TryGetValue(res.Doctor.AppUserId, out var user))
                 {
-                    Id = res.Doctor.Id.ToString(),
-                    FullName = userDictionary[res.Doctor.AppUserId].FullName,
-                    ImagePath = userDictionary[res.Doctor.AppUserId].ImagePath,
-                    TotalYearsOfExperience = res.Doctor.TotalYearsOfExperience,
-                    NumberOfReviews = res.Doctor.NumberOfReviews,
-                    Specializations = res.Doctor.Specializations.Select(s => new SpecializationResponse
+                    doctorResponse.Add(new DoctorResponse
                     {
-                        Id = s.Id.ToString(),
-                        Name = s.Name,
-                        Category = s.Category
-                    }).ToList()
-                });
+                        Id = res.Doctor.Id.ToString(),
+                        FullName = user.FullName,
+                        ImagePath = user.ImagePath,
+                        TotalYearsOfExperience = res.Doctor.TotalYearsOfExperience,
+                        NumberOfReviews = res.Doctor.NumberOfReviews,
+                        Specializations = res.Doctor.Specializations.Select(s => new SpecializationResponse
+                        {
+                            Id = s.Id.ToString(),
+                            Name = s.Name,
+                            Category = s.Category
+                        }).ToList()
+                    });
+                }
             }
 
             return new PaginatedResponse<DoctorResponse>

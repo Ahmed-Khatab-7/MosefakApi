@@ -12,7 +12,9 @@
             builder.Property(x => x.PaymentStatus)
                 .HasConversion(new EnumToStringConverter<PaymentStatus>());
 
-            builder.HasIndex(x => new { x.DoctorId, x.StartDate, x.EndDate }).IsUnique();
+            builder.HasIndex(x => new { x.DoctorId, x.StartDate, x.EndDate })
+                   .IsUnique()
+                   .HasFilter("[AppointmentStatus] != 'CanceledByDoctor' AND [AppointmentStatus] != 'CanceledByPatient'");
 
             builder.Property(x => x.ProblemDescription).HasMaxLength(256).IsRequired(false);
             builder.Property(x => x.CancellationReason).HasMaxLength(256).IsRequired(false);
