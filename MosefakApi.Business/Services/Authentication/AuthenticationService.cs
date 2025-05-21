@@ -240,7 +240,7 @@ namespace MosefakApi.Business.Services.Authentication
                 username: userLogin
             );
 
-            await _emailSender.SendEmailAsync(user.Email, "🔑 Mosefak: Your Password Reset Code", emailBody);
+            await _emailSender.SendEmailAsync(user.Email, "Mosefak: Your Password Reset Code", emailBody);
             _logger.LogInformation($"Password reset code email sent to {user.Email}.");
         }
 
@@ -365,7 +365,8 @@ namespace MosefakApi.Business.Services.Authentication
                 username: userLogin
             );
 
-            await _emailSender.SendEmailAsync(appUser.Email, "✅ Mosefak: Confirm Your Email", emailBody);
+
+            await _emailSender.SendEmailAsync(appUser.Email, "Mosefak: Confirm Your Email", emailBody);
             _logger.LogInformation($"Confirmation email sent to {appUser.Email} with link containing email.");
         }
         private LoginResponse GetLoginResponse(AppUser user, JwtProviderResponse response)
