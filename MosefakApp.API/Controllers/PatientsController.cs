@@ -1,4 +1,6 @@
-﻿namespace MosefakApp.API.Controllers
+﻿using static MosefakApp.Infrastructure.constants.Permissions;
+
+namespace MosefakApp.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -7,10 +9,13 @@
     public class PatientsController : ControllerBase
     {
         private readonly IPatientService _patientService;
+        private readonly IIdProtectorService _idProtectorService;
 
-        public PatientsController(IPatientService patientService)
+
+        public PatientsController(IPatientService patientService, IIdProtectorService idProtectorService)
         {
             _patientService = patientService;
+            _idProtectorService = idProtectorService;
         }
 
         [HttpGet("profile")]
@@ -50,7 +55,21 @@
         [RequiredPermission(Permissions.Patients.View)]
         public async Task<PaginatedResponse<PatientViewModel>> GetPatientsAsync(int pageNumber = 1, int pageSize = 10)
         {
-            return await _patientService.GetPatientsAsync(pageNumber, pageSize);
+            var patients = await _patientService.GetPatientsAsync(pageNumber, pageSize);
+
+            if(patients is not null)
+            {
+                foreach (var item in patients.Data)
+                {
+                    item.Id = ProtectId(item.Id);
+                }
+            }
+
+            return patients;
         }
+
+        private int? UnprotectId(string protectedId) => _idProtectorService.UnProtect(protectedId);
+
+        private string ProtectId(string id) => _idProtectorService.Protect(int.Parse(id));
     }
 }
