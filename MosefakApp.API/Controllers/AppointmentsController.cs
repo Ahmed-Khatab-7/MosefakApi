@@ -327,7 +327,7 @@
 
         [HttpGet("doctor/patient-data")]
         [RequiredPermission(Permissions.Appointments.ViewDoctorAppointments)]
-        public async Task<ActionResult<PaginatedResponse<AppointmentResponse>>> GetDoctorAppointmentsWithPatientData(
+        public async Task<ActionResult<PaginatedResponse<AppointmentPatientResponse>>> GetDoctorAppointmentsWithPatientData(
         [FromQuery] AppointmentStatus? status = null,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
