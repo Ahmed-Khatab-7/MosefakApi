@@ -15,6 +15,8 @@
 
         // 🔹 Doctor Methods
         Task<(List<AppointmentResponse> appointmentResponses, int totalPages)> GetDoctorAppointments(int doctorId, AppointmentStatus? status = null, int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default);
+        Task<(List<AppointmentPatientResponse> appointmentResponses, int totalPages)> GetDoctorAppointmentsWithPatientData(int doctorId, AppointmentStatus? status = null,
+           int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default);
         Task<(List<AppointmentResponse> appointmentResponses, int totalPages)> GetPendingAppointmentsForDoctor(int doctorId, int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default); 
         Task<bool> ApproveAppointmentByDoctor(int appointmentId);
         Task<bool> RejectAppointmentByDoctor(int appointmentId, string? rejectionReason);

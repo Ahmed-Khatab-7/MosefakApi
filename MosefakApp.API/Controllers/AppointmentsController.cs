@@ -325,6 +325,49 @@
             });
         }
 
+        [HttpGet("doctor/patient-data")]
+        [RequiredPermission(Permissions.Appointments.ViewDoctorAppointments)]
+        public async Task<ActionResult<PaginatedResponse<AppointmentResponse>>> GetDoctorAppointmentsWithPatientData(
+        [FromQuery] AppointmentStatus? status = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+        {
+            int doctorId = User.GetUserId();
+
+            // Fetch paginated doctor appointments
+            var (appointments, totalPages) = await _appointmentsService.GetDoctorAppointmentsWithPatientData(
+                doctorId, status, pageNumber, pageSize, cancellationToken);
+
+            if (!appointments.Any())
+            {
+                return Ok(new PaginatedResponse<AppointmentPatientResponse>
+                {
+                    Data = new List<AppointmentPatientResponse>(),
+                    TotalPages = totalPages,
+                    CurrentPage = pageNumber,
+                    PageSize = pageSize
+                });
+            }
+
+            // Protect sensitive IDs
+            appointments.ForEach(x =>
+            {
+                x.Id = ProtectId(x.Id);
+                x.PatientId = ProtectId(x.PatientId);
+                if (x.AppointmentType != null)
+                    x.AppointmentType.Id = ProtectId(x.AppointmentType.Id);
+            });
+
+            // Return structured paginated response
+            return Ok(new PaginatedResponse<AppointmentPatientResponse>
+            {
+                Data = appointments,
+                TotalPages = totalPages,
+                CurrentPage = pageNumber,
+                PageSize = pageSize
+            });
+        }
 
         [HttpGet("pending")]
         [RequiredPermission(Permissions.Appointments.ViewPendingForDoctor)]

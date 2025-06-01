@@ -56,6 +56,22 @@
             return (appointments.Select(a => MapAppointmentResponse(a, doctorDetails)).ToList(), totalPages);
         }
 
+        #region
+        public async Task<(List<AppointmentPatientResponse> appointmentResponses, int totalPages)> GetDoctorAppointmentsWithPatientData(int doctorId, AppointmentStatus? status = null,
+           int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default)
+        {
+            (var appointments, var totalPages) = await FetchDoctorAppointments(doctorId, status, pageNumber, pageSize);
+            if (!appointments.Any()) return (new List<AppointmentPatientResponse>(), totalPages);
+
+            var patientIds = appointments.Select(a => a.PatientId).Distinct().ToList();
+
+            var patientDetails = await FetchPatientDetails(patientIds, cancellationToken);
+
+            return (appointments.Select(a => MapAppointmentPatientResponse(a, patientDetails)).ToList(), totalPages);
+        }
+        #endregion
+
+
         public async Task<AppointmentResponse> GetAppointmentById(int appointmentId, CancellationToken cancellationToken = default)
         {
             var appointment = await _unitOfWork.Repository<Appointment>()
@@ -981,6 +997,21 @@
                 .ToDictionaryAsync(u => u.Id, cancellationToken);
         }
 
+        private async Task<Dictionary<int, PatientDetails>> FetchPatientDetails(List<int> patientIds, CancellationToken cancellationToken)
+        {
+            return await _userManager.Users
+                .Where(u => patientIds.Contains(u.Id))
+                .Select(u => new PatientDetails
+                {
+                    Id = u.Id,
+                    FirstName = u.FirstName ?? "Unknown",
+                    LastName = u.LastName ?? "Unknown",
+                    ImagePath = u.ImagePath ?? string.Empty,
+                    Email = u.Email ?? string.Empty,
+                    PhoneNumber = u.PhoneNumber?? string.Empty
+                })
+                .ToDictionaryAsync(u => u.Id, cancellationToken);
+        }
         private string ProtectId(string id) => _Protector.Protect(int.Parse(id));
         private AppointmentResponse MapAppointmentResponse(Appointment appointment, Dictionary<int, DoctorDetails> doctorDetails)
         {
@@ -1005,6 +1036,35 @@
                                 ? $"{_baseUrl}{doctor.ImagePath}"
                                 : $"{_baseUrl}default.jpg",
                 DoctorSpecialization = _mapper.Map<List<SpecializationResponse>>(appointment.Doctor.Specializations ?? new List<Specialization>())
+            };
+        }
+
+        private AppointmentPatientResponse MapAppointmentPatientResponse(Appointment appointment, Dictionary<int, PatientDetails> patientDetails)
+        {
+            var patient = patientDetails.GetValueOrDefault(appointment.PatientId) ?? new PatientDetails
+            {
+                Id = appointment.Doctor.AppUserId,
+                FirstName = "Unknown",
+                LastName = "Unknown",
+                ImagePath = string.Empty,
+                PhoneNumber = "Unknown",
+                Email = "Unknown"
+            };
+
+            return new AppointmentPatientResponse
+            {
+                Id = appointment.Id.ToString(),
+                Email = patient.Email,
+                PhoneNumber = patient.PhoneNumber,
+                StartDate = appointment.StartDate,
+                EndDate = appointment.EndDate,
+                AppointmentStatus = appointment.AppointmentStatus,
+                AppointmentType = _mapper.Map<AppointmentTypeResponse>(appointment.AppointmentType),
+                PatientId = appointment.PatientId.ToString(),
+                FullName = $"{patient.FirstName} {patient.LastName}",
+                PatientImage = !string.IsNullOrEmpty(patient.ImagePath)
+                                ? $"{_baseUrl}{patient.ImagePath}"
+                                : $"{_baseUrl}default.jpg",
             };
         }
     }
