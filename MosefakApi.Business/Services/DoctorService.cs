@@ -399,61 +399,242 @@
         }
 
 
+        //public async Task<List<TimeSlot>> GetAvailableTimeSlots(int doctorId, int clinicId, int appointmentTypeId, DayOfWeek selectedDay)
+        //{
+        //    // Step 1: Fetch Doctor's Working Periods for the Selected Clinic & Day
+        //    var workingTime = await _unitOfWork.Repository<WorkingTime>()
+        //        .FirstOrDefaultAsync(wt => wt.ClinicId == clinicId && wt.Day == selectedDay, query => query.Include(x => x.Periods));
+
+        //    if (workingTime is null || !workingTime.Periods.Any())
+        //        return new List<TimeSlot>(); // No working periods available.
+
+        //    // Step 2: Fetch Appointment Type Duration (in minutes)
+        //    var appointmentType = await _unitOfWork.Repository<AppointmentType>()
+        //        .FirstOrDefaultAsync(at => at.Id == appointmentTypeId);
+
+        //    if (appointmentType is null)
+        //        throw new BadRequest("Invalid appointment type");
+
+        //    var appointmentDuration = appointmentType.Duration; // Example: 30 minutes
+
+        //    // Step 3: Fetch **All** Booked Appointments for this Doctor on Selected Day (Any Type)
+        //    // Step 1: Fetch all appointments for the doctor (query-friendly condition)
+        //    var allAppointments = await _unitOfWork.Repository<Appointment>()
+        //        .GetAllAsync(a => a.DoctorId == doctorId);
+
+        //    // Step 2: Filter in memory to match the selected day
+        //    var bookedAppointments = allAppointments
+        //        .Where(a => a.StartDate.DayOfWeek == selectedDay)
+        //        .ToList();
+
+        //    var bookedTimes = bookedAppointments
+        //        .Select(a => new
+        //        {
+        //            StartTime = TimeOnly.FromDateTime(a.StartDate.DateTime),
+        //            EndTime = TimeOnly.FromDateTime(a.EndDate.DateTime)
+        //        }).ToList();
+
+        //    var availableSlots = new List<TimeSlot>();
+
+        //    // Step 4: Generate Time Slots Based on **Selected Appointment Duration**
+        //    foreach (var period in workingTime.Periods)
+        //    {
+        //        var slotStart = period.StartTime;
+        //        var slotEnd = slotStart.Add(appointmentDuration);
+
+        //        while (slotEnd <= period.EndTime)
+        //        {
+        //            // ❌ Check if this slot **overlaps with ANY booked appointment**
+        //            bool isBooked = bookedTimes.Any(appt =>
+        //                (slotStart < appt.EndTime && slotEnd > appt.StartTime)); // Overlapping condition
+
+        //            if (!isBooked)
+        //            {
+        //                availableSlots.Add(new TimeSlot
+        //                {
+        //                    StartTime = slotStart,
+        //                    EndTime = slotEnd
+        //                });
+        //            }
+
+        //            // Move to next slot
+        //            slotStart = slotEnd;
+        //            slotEnd = slotStart.Add(appointmentDuration);
+        //        }
+        //    }
+
+        //    return availableSlots;
+        //}
+
+        //public async Task<List<TimeSlot>> GetAvailableTimeSlots(int doctorId, int clinicId, int appointmentTypeId, DayOfWeek selectedDay)
+        //{
+        //    // Step 1: Fetch Doctor's Working Periods for the Selected Clinic & Day
+        //    var workingTime = await _unitOfWork.Repository<WorkingTime>()
+        //        .FirstOrDefaultAsync(wt => wt.ClinicId == clinicId && wt.Day == selectedDay, query => query.Include(x => x.Periods));
+
+        //    if (workingTime is null || !workingTime.Periods.Any())
+        //        return new List<TimeSlot>(); // No working periods available.
+
+        //    // Step 2: Fetch Appointment Type Duration (in minutes)
+        //    var appointmentType = await _unitOfWork.Repository<AppointmentType>()
+        //        .FirstOrDefaultAsync(at => at.Id == appointmentTypeId);
+
+        //    if (appointmentType is null)
+        //        throw new BadRequest("Invalid appointment type");
+
+        //    var appointmentDuration = appointmentType.Duration;
+
+        //    // Step 3: Fetch All Booked Appointments for this Doctor on Selected Day
+        //    var allAppointments = await _unitOfWork.Repository<Appointment>()
+        //        .GetAllAsync(a => a.DoctorId == doctorId);
+
+        //    var bookedAppointments = allAppointments
+        //        .Where(a => a.StartDate.DayOfWeek == selectedDay)
+        //        .ToList();
+
+        //    var bookedTimes = bookedAppointments
+        //        .Select(a => new
+        //        {
+        //            StartTime = TimeOnly.FromDateTime(a.StartDate.DateTime),
+        //            EndTime = TimeOnly.FromDateTime(a.EndDate.DateTime)
+        //        }).ToList();
+
+        //    var availableSlots = new List<TimeSlot>();
+
+        //    // Get current time
+        //    var currentTime = TimeOnly.FromDateTime(DateTime.Now);
+
+        //    // Step 4: Generate Time Slots Based on Selected Appointment Duration
+        //    foreach (var period in workingTime.Periods)
+        //    {
+        //        var slotStart = period.StartTime;
+        //        var slotEnd = slotStart.Add(appointmentDuration);
+
+        //        while (slotEnd <= period.EndTime)
+        //        {
+        //            // Only process slots that start after the current time
+        //            if (slotStart > currentTime)
+        //            {
+        //                // Check if this slot overlaps with ANY booked appointment
+        //                bool isBooked = bookedTimes.Any(appt =>
+        //                    (slotStart < appt.EndTime && slotEnd > appt.StartTime));
+
+        //                if (!isBooked)
+        //                {
+        //                    availableSlots.Add(new TimeSlot
+        //                    {
+        //                        StartTime = slotStart,
+        //                        EndTime = slotEnd
+        //                    });
+        //                }
+        //            }
+
+        //            // Move to next slot
+        //            slotStart = slotEnd;
+        //            slotEnd = slotStart.Add(appointmentDuration);
+        //        }
+        //    }
+
+        //    return availableSlots;
+        //}
+
         public async Task<List<TimeSlot>> GetAvailableTimeSlots(int doctorId, int clinicId, int appointmentTypeId, DayOfWeek selectedDay)
         {
+            // Input validation
+            if (doctorId <= 0) throw new BadRequest("Invalid doctor ID");
+            if (clinicId <= 0) throw new BadRequest("Invalid clinic ID");
+            if (appointmentTypeId <= 0) throw new BadRequest("Invalid appointment type ID");
+
+            // Get current UTC date and time
+            var currentUtcDateTime = DateTime.UtcNow; // 2025-06-10 10:11:37
+            var currentTime = TimeOnly.FromDateTime(currentUtcDateTime);
+            var isToday = currentUtcDateTime.DayOfWeek == selectedDay;
+
             // Step 1: Fetch Doctor's Working Periods for the Selected Clinic & Day
             var workingTime = await _unitOfWork.Repository<WorkingTime>()
-                .FirstOrDefaultAsync(wt => wt.ClinicId == clinicId && wt.Day == selectedDay, query => query.Include(x => x.Periods));
+                    .FirstOrDefaultAsync(wt => wt.ClinicId == clinicId && wt.Day == selectedDay,
+                    query => query.Include(x => x.Periods));
 
             if (workingTime is null || !workingTime.Periods.Any())
                 return new List<TimeSlot>(); // No working periods available.
 
-            // Step 2: Fetch Appointment Type Duration (in minutes)
+            // Step 2: Fetch Appointment Type Duration
             var appointmentType = await _unitOfWork.Repository<AppointmentType>()
                 .FirstOrDefaultAsync(at => at.Id == appointmentTypeId);
 
-            if (appointmentType is null)
-                throw new BadRequest("Invalid appointment type");
+            if (appointmentType == null)
+            {
+                throw new BadRequest($"Appointment type with ID {appointmentTypeId} not found");
+            }
 
-            var appointmentDuration = appointmentType.Duration; // Example: 30 minutes
+            var appointmentDuration = TimeSpan.FromMinutes(appointmentType.Duration.Minutes);
 
-            // Step 3: Fetch **All** Booked Appointments for this Doctor on Selected Day (Any Type)
-            // Step 1: Fetch all appointments for the doctor (query-friendly condition)
-            var allAppointments = await _unitOfWork.Repository<Appointment>()
-                .GetAllAsync(a => a.DoctorId == doctorId);
+            // Step 3: Fetch Booked Appointments efficiently
+            // Get the date for the selected day
+            var targetDate = currentUtcDateTime.Date;
+            if (selectedDay != currentUtcDateTime.DayOfWeek)
+            {
+                // Calculate the next occurrence of the selected day
+                int daysToAdd = ((int)selectedDay - (int)currentUtcDateTime.DayOfWeek + 7) % 7;
+                targetDate = currentUtcDateTime.Date.AddDays(daysToAdd);
+            }
 
-            // Step 2: Filter in memory to match the selected day
-            var bookedAppointments = allAppointments
-                .Where(a => a.StartDate.DayOfWeek == selectedDay)
-                .ToList();
+            // Fetch only relevant appointments for the target date
+            var bookedAppointments = await _unitOfWork.Repository<Appointment>()
+                .GetAllAsync(a =>
+                    a.DoctorId == doctorId &&
+                    a.StartDate.Date == targetDate
+                );
 
             var bookedTimes = bookedAppointments
                 .Select(a => new
                 {
                     StartTime = TimeOnly.FromDateTime(a.StartDate.DateTime),
                     EndTime = TimeOnly.FromDateTime(a.EndDate.DateTime)
-                }).ToList();
+                })
+                .ToList();
 
             var availableSlots = new List<TimeSlot>();
 
-            // Step 4: Generate Time Slots Based on **Selected Appointment Duration**
-            foreach (var period in workingTime.Periods)
+            // Step 4: Generate Available Time Slots
+            foreach (var period in workingTime.Periods.OrderBy(p => p.StartTime))
             {
                 var slotStart = period.StartTime;
                 var slotEnd = slotStart.Add(appointmentDuration);
 
+                // Optimize slot generation by skipping past slots if it's today
+                if (isToday && slotStart <= currentTime)
+                {
+                    // Find the next possible slot after current time
+                    var minutesToNextSlot = (int)Math.Ceiling(
+                        (currentTime.ToTimeSpan() - slotStart.ToTimeSpan()).TotalMinutes
+                        / appointmentDuration.TotalMinutes
+                    ) * appointmentDuration.Minutes;
+
+                    slotStart = period.StartTime.Add(TimeSpan.FromMinutes(minutesToNextSlot));
+                    slotEnd = slotStart.Add(appointmentDuration);
+                }
+
                 while (slotEnd <= period.EndTime)
                 {
-                    // ❌ Check if this slot **overlaps with ANY booked appointment**
+                    // Skip slot generation if we're already past the end time
+                    if (slotEnd > period.EndTime) break;
+
+                    // Check for booking conflicts
                     bool isBooked = bookedTimes.Any(appt =>
-                        (slotStart < appt.EndTime && slotEnd > appt.StartTime)); // Overlapping condition
+                        (slotStart < appt.EndTime && slotEnd > appt.StartTime));
 
                     if (!isBooked)
                     {
+                        var startDateTime = targetDate.Add(slotStart.ToTimeSpan());
+                        var endDateTime = targetDate.Add(slotEnd.ToTimeSpan());
+
                         availableSlots.Add(new TimeSlot
                         {
                             StartTime = slotStart,
-                            EndTime = slotEnd
+                            EndTime = slotEnd,
+                            //StartDateTime = startDateTime,
+                            //EndDateTime = endDateTime
                         });
                     }
 
@@ -463,9 +644,9 @@
                 }
             }
 
-            return availableSlots;
+            // Sort slots by start time and return
+            return availableSlots.OrderBy(s => s.StartTime).ToList();
         }
-
 
         public async Task<bool> UploadProfileImageAsync(int doctorId, IFormFile imageFile, CancellationToken cancellationToken = default) // [Done]
         {
