@@ -1,4 +1,5 @@
-﻿namespace MosefakApi.Business.Services
+﻿
+namespace MosefakApi.Business.Services
 {
     public class DoctorService : IDoctorService
     {
@@ -796,148 +797,10 @@
         }
 
 
-
-        public async Task<PaginatedResponse<DoctorResponse>> SearchDoctorsAsync(DoctorSearchFilter filter, int pageNumber = 1, int pageSize = 10)
+        public async Task<PaginatedResponse<DoctorResponse>> SearchDoctorsUnifiedAsync(
+        DoctorUnifiedSearchFilter filter, int pageNumber = 1, int pageSize = 10)
         {
-            if (string.IsNullOrWhiteSpace(filter.Name))
-                return new PaginatedResponse<DoctorResponse>
-                {
-                    CurrentPage = pageNumber,
-                    Data = [],
-                    PageSize = pageSize,
-                    TotalPages = 0
-                };
-
-            var normalizedName = filter.Name.Trim().ToLower();
-
-            // Fetch matching users
-            var users = await _userRepository.GetAllUsersAsync(x =>
-                EF.Functions.Like(x.FirstName + " " + x.LastName, $"%{normalizedName}%"));
-
-            if (!users.Any())
-                return new PaginatedResponse<DoctorResponse>
-                {
-                    CurrentPage = pageNumber,
-                    Data = [],
-                    PageSize = pageSize,
-                    TotalPages = 0
-                };
-
-            // Create dictionary for fast lookup
-            var userDictionary = users.ToDictionary(
-                u => u.Id,
-                u => new
-                {
-                    FullName = $"{u.FirstName} {u.LastName}",
-                    ImagePath = _baseUrl + (!string.IsNullOrWhiteSpace(u.ImagePath) ? u.ImagePath : "default.jpg")
-                });
-
-            var userIds = users.Select(x => x.Id);
-
-            // Retrieve doctor details with paging
-            var (doctors, totalCount) = await _unitOfWork
-                .GetCustomRepository<DoctorRepositoryAsync>()
-                .GetAllAsync(
-                    d => userIds.Contains(d.AppUserId),
-                    query => query.Include(x => x.Specializations).Include(x => x.Experiences),
-                    pageNumber,
-                    pageSize);
-
-            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-
-            // Map the final result
-            var doctorResponse = doctors.Select(d => new DoctorResponse
-            {
-                Id = d.Id.ToString(),
-                FullName = userDictionary[d.AppUserId].FullName,
-                ImagePath = userDictionary[d.AppUserId].ImagePath,
-                TotalYearsOfExperience = d.TotalYearsOfExperience,
-                Specializations = d.Specializations.Select(x => new SpecializationResponse
-                {
-                    Id = x.Id.ToString(),
-                    Name = x.Name,
-                    Category = x.Category
-                }).ToList(),
-                NumberOfReviews = d.NumberOfReviews,
-            }).ToList();
-
-            return new PaginatedResponse<DoctorResponse>
-            {
-                Data = doctorResponse,
-                CurrentPage = pageNumber,
-                PageSize = pageSize,
-                TotalPages = totalPages
-            };
-        }
-
-        public async Task<PaginatedResponse<DoctorResponse>> SearchDoctorsBySpecialityAsync(DoctorSearchBySpecialityCategoryFilter filter, int pageNumber = 1, int pageSize = 10)
-        {
-
-            (var specializations, var totalCount) = await _unitOfWork.Repository<Specialization>()
-                .GetAllAsync(s => s.Category == filter.Category,
-                query =>
-                query.Include(x => x.Doctor)
-                .ThenInclude(x=> x.Experiences),
-                pageNumber, pageSize);
-
-            var totalPages = (int)((double)totalCount / pageSize);
-
-            if (!specializations.Any())
-                return new PaginatedResponse<DoctorResponse>
-                {
-                    CurrentPage = pageNumber,
-                    Data = [],
-                    PageSize = pageSize,
-                    TotalPages = totalPages
-                };
-
-            // Extract unique user IDs
-            var userIds = specializations.Select(s => s.Doctor.AppUserId).Distinct().ToList();
-
-            // Fetch user details in one query and store in a dictionary
-            var userDictionary = await _userManager.Users
-                .Where(u => userIds.Contains(u.Id))
-                .Select(u => new
-                {
-                    u.Id,
-                    FullName = $"{u.FirstName} {u.LastName}",
-                    ImagePath = _baseUrl + (!string.IsNullOrWhiteSpace(u.ImagePath) ? u.ImagePath : "default.jpg")
-                })
-                .ToDictionaryAsync(u => u.Id);
-
-          
-            // Map the final result
-            var doctorResponse = new List<DoctorResponse>();
-
-            foreach (var res in specializations)
-            {
-
-                if (userDictionary.TryGetValue(res.Doctor.AppUserId, out var user))
-                {
-                    doctorResponse.Add(new DoctorResponse
-                    {
-                        Id = res.Doctor.Id.ToString(),
-                        FullName = user.FullName,
-                        ImagePath = user.ImagePath,
-                        TotalYearsOfExperience = res.Doctor.TotalYearsOfExperience,
-                        NumberOfReviews = res.Doctor.NumberOfReviews,
-                        Specializations = res.Doctor.Specializations.Select(s => new SpecializationResponse
-                        {
-                            Id = s.Id.ToString(),
-                            Name = s.Name,
-                            Category = s.Category
-                        }).ToList()
-                    });
-                }
-            }
-
-            return new PaginatedResponse<DoctorResponse>
-            {
-                Data = doctorResponse,
-                CurrentPage = pageNumber,
-                PageSize = pageSize,
-                TotalPages = totalPages
-            };
+            return await _unitOfWork.GetCustomRepository<IDoctorRepositoryAsync>().SearchDoctorsAsync(filter, pageNumber, pageSize);
         }
 
         public async Task<PaginatedResponse<AppointmentDto>> GetUpcomingAppointmentsAsync(int doctorId, int pageNumber = 1, int pageSize = 10)
@@ -1936,6 +1799,34 @@
             };
         }
 
+        public async Task<PaginatedResponse<SpecializationResponse>> GetSpecializations(int pageNumber = 1, int pageSize = 10)
+        {
+            (var query, var totalCount) = await _unitOfWork.Repository<Specialization>()
+                           .GetAllAsync(query => query.Include(x => x.Doctor),
+                           pageNumber,
+                           pageSize);
+
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            if (query is null)
+                return new PaginatedResponse<SpecializationResponse>
+                {
+                    Data = new List<SpecializationResponse>(),
+                    PageSize = pageSize,
+                    CurrentPage = pageNumber,
+                    TotalPages = totalPages
+                };
+
+            var response = _mapper.Map<List<SpecializationResponse>>(query);
+
+            return new PaginatedResponse<SpecializationResponse>
+            {
+                Data = response,
+                PageSize = pageSize,
+                CurrentPage = pageNumber,
+                TotalPages = totalPages
+            };
+        }
         public async Task<PaginatedResponse<ExperienceResponse>> GetExperiences(int doctorId, int pageNumber = 1, int pageSize = 10)
         {
             (var query,var totalCount) = await _unitOfWork.Repository<Experience>()
@@ -2264,9 +2155,10 @@
 
                     return new ReviewResponse
                     {
-                        Id = review.Id.ToString(),
+                        Id = review.Id.ToString(), 
                         FullName = reviewerFullName,
                         ImagePath = reviewerImagePath,
+                        AppUserId = review.AppUserId.ToString(),
                         Comment = review.Comment,
                         Rate = review.Rate,
                     };
@@ -2335,6 +2227,8 @@
                 TotalPages = totalPages
             };
         }
+
+        
     }
 
 }

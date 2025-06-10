@@ -8,5 +8,6 @@
         Task<Dictionary<int, (string FullName, string ImagePath)>> GetUserDetailsAsync(int appUserIds);
         Task<DoctorProfileResponse> GetDoctorProfile(int appUserIdFromClaims);
         Task<DoctorEarningsResponse> GetEarningsReportAsync(int doctorId, DateTimeOffset startDate, DateTimeOffset endDate);
+        Task<PaginatedResponse<DoctorResponse>> SearchDoctorsAsync(DoctorUnifiedSearchFilter filter, int pageNumber = 1, int pageSize = 10);
     }
 }

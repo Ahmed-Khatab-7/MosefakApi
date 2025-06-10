@@ -76,6 +76,8 @@
             public const string Book = "Permissions.Appointments.BookAppointment";
             public const string CreatePaymentIntent = "Permissions.Appointments.CreatePaymentIntent";
             public const string ConfirmPayment = "Permissions.Appointments.ConfirmAppointmentPayment";
+            public const string Payments = "Permissions.Appointments.Payments";
+            public const string DeletePayment = "Permissions.Appointments.DeletePayment";
         }
 
         public static class Patients
@@ -89,6 +91,7 @@
         public static class Specializations
         {
             public const string View = "Permissions.Specializations.ViewSpecializations";
+            public const string ViewForAdmin = "Permissions.Specializations.ViewSpecializationsForAdmin";
             public const string Create = "Permissions.Specializations.CreateSpecialization";
             public const string Edit = "Permissions.Specializations.EditSpecialization";
             public const string Remove = "Permissions.Specializations.RemoveSpecialization";
@@ -129,6 +132,7 @@
         public static class Reviews
         {
             public const string View = "Permissions.Reviews.View";
+            public const string ViewForDoc = "Permissions.Reviews.ViewForDoc";
             public const string Create = "Permissions.Reviews.Create";
             public const string Edit = "Permissions.Reviews.Edit";
             public const string Delete = "Permissions.Reviews.Delete";

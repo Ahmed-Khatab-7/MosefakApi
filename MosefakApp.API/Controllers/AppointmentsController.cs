@@ -1,4 +1,6 @@
-﻿namespace MosefakApp.API.Controllers
+﻿using MosefakApp.Core.Dtos.Payment;
+
+namespace MosefakApp.API.Controllers
 {
     [Route("api/appointments")]
     [ApiController]
@@ -457,6 +459,32 @@
             });
         }
 
+        [HttpGet("Payments")]
+        [RequiredPermission(Permissions.Appointments.Payments)]
+        [AllowAnonymousPermission]
+        public async Task<ActionResult<PaginatedResponse<PaymentResponse>>> GetPayments(
+            [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        {
+            var payments = await _appointmentsService.GetPayments(pageNumber, pageSize);
+
+            payments.Data.Select(x => x.Id = ProtectId(x.Id.ToString())).ToList();
+            payments.Data.Select(x => x.AppointmentId = ProtectId(x.AppointmentId.ToString())).ToList();
+            
+            return Ok(payments);
+        }
+
+        [HttpDelete("Payments/{paymentId}")]
+        [RequiredPermission(Permissions.Appointments.DeletePayment)]
+        public async Task<ActionResult<bool>> DeletePayment(string paymentId)
+        {
+            var unprotectedId = UnprotectId(paymentId);
+            if (unprotectedId == null)
+                return BadRequest("Invalid ID");
+
+            var query = await _appointmentsService.DeletePayment(unprotectedId.Value);
+
+            return Ok(query);
+        }
 
         // 🔥 Reusable Helper Method for ID Protection
         private int? UnprotectId(string protectedId) => _idProtectorService.UnProtect(protectedId);

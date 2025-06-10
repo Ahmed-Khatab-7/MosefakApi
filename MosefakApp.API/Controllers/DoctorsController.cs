@@ -49,19 +49,20 @@
             return Ok(doctor);
         }
 
-        // ✅ Search doctors
+      
+
         [HttpPost("search")]
-        [RequiredPermission(Permissions.Doctors.Search)]
-        public async Task<ActionResult<PaginatedResponse<DoctorResponse>>> SearchDoctorsAsync(
-            [FromBody] DoctorSearchFilter filter,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+        //[RequiredPermission(Permissions.Doctors.Search)]
+        [AllowAnonymousPermission]
+        public async Task<ActionResult<PaginatedResponse<DoctorResponse>>> SearchDoctors(
+        [FromBody] DoctorUnifiedSearchFilter filter,
+        [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var query = await _doctorService.SearchDoctorsAsync(filter,pageNumber,pageSize);
-           
-            if (query?.Data != null)
+            var result = await _doctorService.SearchDoctorsUnifiedAsync(filter, pageNumber, pageSize);
+
+            if (result?.Data != null)
             {
-                foreach (var doc in query.Data)
+                foreach (var doc in result.Data)
                 {
                     doc.Id = ProtectId(doc.Id);
                     if (doc.Specializations != null)
@@ -74,36 +75,9 @@
                 }
             }
 
-            return Ok(query);
+            return Ok(result);
         }
 
-        // ✅ Search doctors
-        [HttpPost("search-by-speciality")]
-        [RequiredPermission(Permissions.Doctors.SearchBySpeciality)]
-        public async Task<ActionResult<PaginatedResponse<DoctorResponse>>> SearchDoctorsBySpecialityAsync(
-            [FromBody] DoctorSearchBySpecialityCategoryFilter filter,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            var query = await _doctorService.SearchDoctorsBySpecialityAsync(filter, pageNumber, pageSize);
-
-            if (query?.Data != null)
-            {
-                foreach (var doc in query.Data)
-                {
-                    doc.Id = ProtectId(doc.Id);
-                    if (doc.Specializations != null)
-                    {
-                        foreach (var s in doc.Specializations)
-                        {
-                            s.Id = ProtectId(s.Id);
-                        }
-                    }
-                }
-            }
-
-            return Ok(query);
-        }
 
         // ✅ Get doctor profile (Authenticated Doctor)
         [HttpGet("profile")]
@@ -224,6 +198,18 @@
             var userId = User.GetUserId();
             var query = await _doctorService.GetSpecializations(userId, pageNumber, pageSize);
             if(query != null)
+                query.Data.ToList().ForEach(s => s.Id = ProtectId(s.Id));
+            return Ok(query);
+        }
+
+        [HttpGet("specializations/admin")]
+        [RequiredPermission(Permissions.Specializations.ViewForAdmin)]
+        public async Task<ActionResult<PaginatedResponse<SpecializationResponse>>> GetSpecializationsForAdmin(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var query = await _doctorService.GetSpecializations(pageNumber, pageSize);
+            if (query != null)
                 query.Data.ToList().ForEach(s => s.Id = ProtectId(s.Id));
             return Ok(query);
         }
@@ -598,6 +584,8 @@
             doctor.Clinics.ForEach(c => c.WorkingTimes.ForEach(w => w.Id = ProtectId(w.Id)));
             doctor.Clinics.ForEach(c => c.WorkingTimes.ForEach(w => w.Periods.ForEach(p => p.Id = ProtectId(p.Id))));
             doctor.Experiences.ForEach(ex => ex.Id = ProtectId(ex.Id));
+            doctor.Reviews.ForEach(x => x.Id = ProtectId(x.Id));
+            //doctor.Reviews.ForEach(x => x.AppUserId = ProtectId(x.AppUserId));
         }
     }
 

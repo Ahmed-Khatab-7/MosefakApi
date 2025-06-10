@@ -51,6 +51,37 @@
             }).ToList();
         }
 
+        public async Task<List<ReviewResponse>> GetAllReviewsForDoctorDashboard(int doctorId)
+        {
+            var reviews = await _unitOfWork.Repository<Review>().GetAllAsync(x => x.DoctorId == doctorId);
+            if (!reviews.Any()) return new List<ReviewResponse>(); // ✅ Return empty list instead of null
+
+            // 🔹 Retrieve all users in a single query
+            var userIds = reviews.Select(x => x.AppUserId).ToHashSet();
+            var usersDict = await _userManager.Users
+                .Where(x => userIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => new
+                {
+                    x.FirstName,
+                    x.LastName,
+                    x.ImagePath
+                });
+
+            // 🔹 Use LINQ for better performance
+            return reviews.Select(review => new ReviewResponse
+            {
+                Id = review.Id.ToString(),
+                Comment = review.Comment,
+                Rate = review.Rate,
+                CreatedAt = review.CreatedAt,
+                FullName = usersDict.TryGetValue(review.AppUserId, out var user)
+                    ? $"{user.FirstName} {user.LastName}"
+                    : "Unknown",
+                ImagePath = usersDict.TryGetValue(review.AppUserId, out var userData)
+                    ? $"{_basePath}{userData.ImagePath}"
+                    : $"{_basePath}default.jpg"
+            }).ToList();
+        }
         public async Task<bool> AddReview(int patientId, int doctorId, ReviewRequest request, CancellationToken cancellationToken = default)
         {
             var doctor = await _unitOfWork.GetCustomRepository<DoctorRepositoryAsync>()
@@ -131,5 +162,7 @@
             await _unitOfWork.Repository<Review>().DeleteEntityAsync(review);
             return await _unitOfWork.CommitAsync(cancellationToken) > 0;
         }
+
+       
     }
 }

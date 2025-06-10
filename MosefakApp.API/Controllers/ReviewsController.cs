@@ -35,6 +35,21 @@
             return Ok(reviews);
         }
 
+        [HttpGet("doctor")]
+        [RequiredPermission(Permissions.Reviews.ViewForDoc)]
+        public async Task<ActionResult<List<ReviewResponse>>> GetAllReviewsForDoctorDashboard()
+        {
+            var doctorId = User.GetUserId();
+            var reviews = await _reviewService.GetAllReviewsForDoctorDashboard(doctorId);
+
+            if (reviews == null || !reviews.Any())
+                return NotFound(new { message = "No reviews found for this doctor." });
+
+            reviews.ForEach(r => r.Id = ProtectId(r.Id));
+
+            return Ok(reviews);
+        }
+
         /// <summary>
         /// Adds a new review for a doctor.
         /// </summary>

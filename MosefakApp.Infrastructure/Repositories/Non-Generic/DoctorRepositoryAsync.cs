@@ -1,4 +1,7 @@
-﻿namespace MosefakApp.Infrastructure.Repositories.Non_Generic
+﻿using MosefakApp.Core.Dtos.Doctor.Requests;
+using MosefakApp.Core.Dtos.Pagination;
+
+namespace MosefakApp.Infrastructure.Repositories.Non_Generic
 {
     public class DoctorRepositoryAsync : GenericRepositoryAsync<Doctor>, IDoctorRepositoryAsync
     {
@@ -272,6 +275,116 @@
                 PendingAppointmentsCount = pendingAppointmentsCount,
                 CancelledAppointmentsCount = cancelledAppointmentsCount
             };
+        }
+
+        public async Task<PaginatedResponse<DoctorResponse>> SearchDoctorsAsync(DoctorUnifiedSearchFilter filter, int pageNumber = 1, int pageSize = 10)
+        {
+            var query = _context.Doctors
+                .Include(d => d.Specializations)
+                .Include(d => d.Reviews)
+                .Include(d => d.Experiences)
+                .Include(d => d.AppointmentTypes)
+                .AsQueryable();
+
+            // Apply specialty filter
+            if (filter.SpecialtyCategory.HasValue)
+            {
+                query = query.Where(d =>
+                    d.Specializations.Any(s => s.Category == filter.SpecialtyCategory)
+                );
+            }
+
+            //// Apply rating filter
+            if (filter.MinRating.HasValue)
+            {
+                query = query.Where(d =>
+                    d.Reviews.Any() && d.Reviews.Average(r => r.Rate) >= filter.MinRating.Value
+                );
+            }
+
+           
+            if (filter.MaxPrice.HasValue && filter.MaxPrice.Value > 0)
+            {
+                query = query.Where(d =>
+                    d.AppointmentTypes.Any(at => at.ConsultationFee <= filter.MaxPrice.Value)
+                );
+            }
+
+            // Sorting by rating (if requested)
+            if (filter.SortBy?.ToLower() == "rating")
+            {
+                query = filter.SortDescending
+                    ? query.OrderByDescending(d => d.Reviews.Any() ? d.Reviews.Average(r => r.Rate) : 0)
+                    : query.OrderBy(d => d.Reviews.Any() ? d.Reviews.Average(r => r.Rate) : 0);
+            }
+
+            var doctors = await query.ToListAsync();
+
+            // Fetch user details from other DB for only needed user IDs
+            var userIds = doctors.Select(d => d.AppUserId).Distinct().ToList();
+            var userDetails = await GetUserDetailsAsync(userIds);
+
+            // Filter by name after joining with user details (if needed)
+            if (!string.IsNullOrWhiteSpace(filter.Name))
+            {
+                var normalized = filter.Name.Trim().ToLower();
+                doctors = doctors.Where(d =>
+                {
+                    if (userDetails.TryGetValue(d.AppUserId, out var u))
+                    {
+                        return u.FullName.ToLower().Contains(normalized);
+                    }
+                    return false;
+                }).ToList();
+            }
+
+            // Sorting by name (if not by rating)
+            if (string.IsNullOrWhiteSpace(filter.SortBy) || filter.SortBy.ToLower() != "rating")
+            {
+                doctors = doctors.OrderBy(d =>
+                {
+                    if (userDetails.TryGetValue(d.AppUserId, out var u))
+                        return u.FullName;
+                    return "";
+                }).ToList();
+            }
+
+            var totalCount = doctors.Count;
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            // Paging
+            var pagedDoctors = doctors.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+
+            var response = new PaginatedResponse<DoctorResponse>
+            {
+                CurrentPage = pageNumber,
+                PageSize = pageSize,
+                TotalPages = totalPages,
+                Data = pagedDoctors.Select(d =>
+                {
+                    var (fullName, imagePath) = userDetails.TryGetValue(d.AppUserId, out var details)
+                        ? details
+                        : ("Unknown", $"{_baseUrl}default.jpg");
+
+                    return new DoctorResponse
+                    {
+                        Id = d.Id.ToString(),
+                        FullName = fullName,
+                        ImagePath = imagePath,
+                        NumberOfReviews = d.NumberOfReviews,
+                        Rating = d.Reviews.Any() ? Math.Round(d.Reviews.Average(r => r.Rate), 1) : 0,
+                        TotalYearsOfExperience = d.TotalYearsOfExperience,
+                        Specializations = d.Specializations.Select(s => new SpecializationResponse
+                        {
+                            Id = s.Id.ToString(),
+                            Name = s.Name,
+                            Category = s.Category
+                        }).ToList()
+                    };
+                }).ToList()
+            };
+
+            return response;
         }
 
     }

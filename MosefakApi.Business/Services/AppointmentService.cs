@@ -1,4 +1,7 @@
-﻿namespace MosefakApi.Business.Services
+﻿using MosefakApp.Core.Dtos.Payment;
+using static MosefakApp.Infrastructure.constants.Permissions;
+
+namespace MosefakApi.Business.Services
 {
     public class AppointmentService : IAppointmentService
     {
@@ -31,9 +34,9 @@
 
         public async Task<(List<AppointmentResponse> appointmentResponses, int totalPages)> GetPatientAppointments(
             int userIdFromClaims, AppointmentStatus? status = null,
-            int pageNumber = 1, int pageSize = 10,CancellationToken cancellationToken = default)
+            int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default)
         {
-            (var appointments,var totalPages) = await FetchPatientAppointments(userIdFromClaims, status, pageNumber, pageSize);
+            (var appointments, var totalPages) = await FetchPatientAppointments(userIdFromClaims, status, pageNumber, pageSize);
 
             if (!appointments.Any()) return (new List<AppointmentResponse>(), totalPages);
 
@@ -43,17 +46,26 @@
             return (appointments.Select(a => MapAppointmentResponse(a, doctorDetails)).ToList(), totalPages);
         }
 
-        public async Task<(List<AppointmentResponse> appointmentResponses, int totalPages)> GetDoctorAppointments(int doctorId, AppointmentStatus? status = null,
-            int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default)
+        public async Task<(List<AppointmentResponse> appointmentResponses, int totalPages)> GetDoctorAppointments(
+          int doctorId,
+          AppointmentStatus? status = null,
+          int pageNumber = 1,
+          int pageSize = 10,
+          CancellationToken cancellationToken = default)
         {
             (var appointments, var totalPages) = await FetchDoctorAppointments(doctorId, status, pageNumber, pageSize);
             if (!appointments.Any()) return (new List<AppointmentResponse>(), totalPages);
 
             var doctorAppUserIds = appointments.Select(a => a.Doctor.AppUserId).Distinct().ToList();
+            var patientAppUserIds = appointments.Select(a => a.PatientId).Distinct().ToList();
 
             var doctorDetails = await FetchDoctorDetails(doctorAppUserIds, cancellationToken);
+            var patientDetails = await FetchPatientDetails(patientAppUserIds, cancellationToken);
 
-            return (appointments.Select(a => MapAppointmentResponse(a, doctorDetails)).ToList(), totalPages);
+            return (
+                appointments.Select(a => MapAppointmentResponse(a, doctorDetails, patientDetails)).ToList(),
+                totalPages
+            );
         }
 
         #region
@@ -71,6 +83,18 @@
         }
         #endregion
 
+        public async Task<bool> DeletePayment(int paymentId)
+        {
+            var payment = await _unitOfWork.Repository<Payment>().FirstOrDefaultAsync(x => x.Id == paymentId);
+
+            if (payment is null)
+                throw new ItemNotFound("payment is not found");
+
+            await _unitOfWork.Repository<Payment>().DeleteEntityAsync(payment);
+            await _unitOfWork.CommitAsync();
+
+            return true;
+        }
 
         public async Task<AppointmentResponse> GetAppointmentById(int appointmentId, CancellationToken cancellationToken = default)
         {
@@ -730,6 +754,57 @@
             });
         }
 
+        public async Task<PaginatedResponse<PaymentResponse>> GetPayments(int pageNumber = 1, int pageSize = 10)
+        {
+            // Fetch payments and total count with included Appointment
+            (var payments, var totalCount) = await _unitOfWork.Repository<Payment>()
+                .GetAllAsync(x => x.Include(x => x.Appointment), pageNumber, pageSize);
+
+            // Prepare paginated response
+            var response = new PaginatedResponse<PaymentResponse>()
+            {
+                CurrentPage = pageNumber,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+            };
+
+            // If no payments, return empty list
+            if (!payments.Any())
+            {
+                response.Data = new List<PaymentResponse>();
+                return response;
+            }
+
+            // Gather unique patient IDs from appointments
+            var usersIds = payments.Select(x => x.Appointment.PatientId).ToHashSet();
+
+            // Fetch user details (FullName, Image) for these patients
+            var userDetails = await _unitOfWork.GetCustomRepository<IDoctorRepositoryAsync>()
+                .GetUserDetailsAsync(usersIds);
+
+            // Map payments to PaymentResponse, joining user details
+            response.Data = payments.Select(payment =>
+            {
+                var patientId = payment.Appointment.PatientId;
+                var (fullName, imagePath) = userDetails.TryGetValue(patientId, out var details)
+                    ? details
+                    : (string.Empty, string.Empty);
+
+                return new PaymentResponse
+                {
+                    Id = payment.Id.ToString(),
+                    AppointmentId = payment.AppointmentId.ToString(),
+                    Amount = payment.Amount,
+                    Status = payment.Status,
+                    FullName = fullName,
+                    Image = _baseUrl + imagePath,
+                    CreatedAt = payment.CreatedAt
+                };
+            }).ToList();
+
+            return response;
+        }
+
 
         public async Task<AppointmentStatus> GetAppointmentStatus(int appointmentId)
         {
@@ -1012,6 +1087,8 @@
                 })
                 .ToDictionaryAsync(u => u.Id, cancellationToken);
         }
+
+       
         private string ProtectId(string id) => _Protector.Protect(int.Parse(id));
         private AppointmentResponse MapAppointmentResponse(Appointment appointment, Dictionary<int, DoctorDetails> doctorDetails)
         {
@@ -1036,6 +1113,48 @@
                                 ? $"{_baseUrl}{doctor.ImagePath}"
                                 : $"{_baseUrl}default.jpg",
                 DoctorSpecialization = _mapper.Map<List<SpecializationResponse>>(appointment.Doctor.Specializations ?? new List<Specialization>())
+            };
+        }
+
+        // Updated mapping method to include patient details
+        private AppointmentResponse MapAppointmentResponse(
+            Appointment appointment,
+            Dictionary<int, DoctorDetails> doctorDetails,
+            Dictionary<int, PatientDetails> patientDetails)
+        {
+            var doctor = doctorDetails.GetValueOrDefault(appointment.Doctor.AppUserId) ?? new DoctorDetails
+            {
+                Id = appointment.Doctor.AppUserId,
+                FirstName = "Unknown",
+                LastName = "Unknown",
+                ImagePath = string.Empty
+            };
+
+            var patient = patientDetails.GetValueOrDefault(appointment.PatientId) ?? new PatientDetails
+            {
+                Id = appointment.PatientId,
+                FirstName = "Unknown",
+                LastName = "Unknown",
+                ImagePath = string.Empty
+            };
+
+            return new AppointmentResponse
+            {
+                Id = appointment.Id.ToString(),
+                StartDate = appointment.StartDate,
+                EndDate = appointment.EndDate,
+                AppointmentStatus = appointment.AppointmentStatus,
+                AppointmentType = _mapper.Map<AppointmentTypeResponse>(appointment.AppointmentType),
+                DoctorId = appointment.Doctor.Id.ToString(),
+                DoctorFullName = $"{doctor.FirstName} {doctor.LastName}",
+                DoctorImage = !string.IsNullOrEmpty(doctor.ImagePath)
+                                ? $"{_baseUrl}{doctor.ImagePath}"
+                                : $"{_baseUrl}default.jpg",
+                DoctorSpecialization = _mapper.Map<List<SpecializationResponse>>(appointment.Doctor.Specializations ?? new List<Specialization>()),
+                PatientFullName = $"{patient.FirstName} {patient.LastName}",
+                PatientImage = !string.IsNullOrEmpty(patient.ImagePath)
+                                ? $"{_baseUrl}{patient.ImagePath}"
+                                : $"{_baseUrl}default.jpg"
             };
         }
 

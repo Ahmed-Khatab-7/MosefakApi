@@ -1,4 +1,6 @@
-﻿namespace MosefakApp.Core.IServices
+﻿using MosefakApp.Core.Dtos.Payment;
+
+namespace MosefakApp.Core.IServices
 {
     public interface IAppointmentService
     {
@@ -23,6 +25,9 @@
         Task<bool> CancelAppointmentByDoctor(int appointmentId, string? cancelationReason, CancellationToken cancellationToken = default);
         Task<bool> MarkAppointmentAsCompleted(int appointmentId);
         Task<(List<AppointmentResponse> appointmentResponses, int totalPages)> GetAppointmentsByDateRangeForDoctor(int doctorId, DateTimeOffset startDate, DateTimeOffset endDate, int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default);
+
+        Task<PaginatedResponse<PaymentResponse>> GetPayments(int pageNumber = 1, int pageSize = 10);
+        Task<bool> DeletePayment(int paymentId);
 
         // 🔹 Utility Methods
         Task AutoCancelUnpaidAppointments(); // Handled by Hangfire
