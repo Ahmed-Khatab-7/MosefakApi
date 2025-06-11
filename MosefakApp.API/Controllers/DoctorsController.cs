@@ -52,8 +52,7 @@
       
 
         [HttpPost("search")]
-        //[RequiredPermission(Permissions.Doctors.Search)]
-        [AllowAnonymousPermission]
+        [RequiredPermission(Permissions.Doctors.Search)]
         public async Task<ActionResult<PaginatedResponse<DoctorResponse>>> SearchDoctors(
         [FromBody] DoctorUnifiedSearchFilter filter,
         [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)

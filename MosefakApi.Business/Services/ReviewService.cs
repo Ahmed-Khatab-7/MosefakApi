@@ -39,6 +39,7 @@
             return reviews.Select(review => new ReviewResponse
             {
                 Id = review.Id.ToString(),
+                AppUserId = review.AppUserId.ToString(),
                 Comment = review.Comment,
                 Rate = review.Rate,
                 CreatedAt = review.CreatedAt,
@@ -73,6 +74,7 @@
                 Id = review.Id.ToString(),
                 Comment = review.Comment,
                 Rate = review.Rate,
+                AppUserId = review.AppUserId.ToString(),
                 CreatedAt = review.CreatedAt,
                 FullName = usersDict.TryGetValue(review.AppUserId, out var user)
                     ? $"{user.FirstName} {user.LastName}"

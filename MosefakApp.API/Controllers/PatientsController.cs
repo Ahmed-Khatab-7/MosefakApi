@@ -1,6 +1,4 @@
-﻿using static MosefakApp.Infrastructure.constants.Permissions;
-
-namespace MosefakApp.API.Controllers
+﻿namespace MosefakApp.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
