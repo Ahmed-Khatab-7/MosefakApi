@@ -400,7 +400,8 @@ namespace MosefakApi.Business.Services
                         PaymentMethod = MosefakApp.Domains.Enums.PaymentMethod.Stripe, // ✅ تم تحديد المسار الكامل هنا
                         Status = PaymentStatus.Pending,
                         AppointmentId = appointment.Id,
-                        StripePaymentIntentId = paymentIntentId // Store the PaymentIntentId
+                        StripePaymentIntentId = paymentIntentId, // Store the PaymentIntentId
+                        ClientSecret = clientSecret,
                     };
 
                     await _unitOfWork.Repository<Payment>().AddEntityAsync(payment);
