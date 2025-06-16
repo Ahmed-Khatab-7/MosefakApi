@@ -332,14 +332,15 @@ namespace MosefakApi.Business.Services
 
                 try
                 {
-                   
+
 
                     // 1️⃣ Retrieve the doctor with their appointment types.
                     var doctor = await _unitOfWork.GetCustomRepository<IDoctorRepositoryAsync>()
                         .FirstOrDefaultAsync(x => x.Id == int.Parse(request.DoctorId));
 
                     if (doctor == null)
-                    { _loggerService.LogWarning("Attempted to book an appointment with non-existent doctor {DoctorId}.", request.DoctorId);
+                    {
+                        _loggerService.LogWarning("Attempted to book an appointment with non-existent doctor {DoctorId}.", request.DoctorId);
                         throw new ItemNotFound("Doctor does not exist.");
                     }
                     // 2️⃣ Retrieve the specified appointment type.
@@ -354,7 +355,7 @@ namespace MosefakApi.Business.Services
                         throw new ItemNotFound("This appointment type does not exist for this doctor.");
                     }
 
-                    // 3️⃣ Calculate the appointment's end time by adding the duration to the start date.
+                    // 3️⃣ Calculate the appointment\"s end time by adding the duration to the start date.
                     var endTime = request.StartDate.Add(appointmentType.Duration);
 
                     // 4️⃣ Check if the new time slot is available.
@@ -380,8 +381,33 @@ namespace MosefakApi.Business.Services
                         .AddEntityAsync(appointment)
                         .ConfigureAwait(false);
 
+                    // Commit the appointment to get its ID before creating payment
                     if (await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false) <= 0)
                         throw new Exception("Failed to book appointment.");
+
+                    // Generate PaymentIntent from Stripe and save Payment entity
+                    // ✅ تم تحديد النوع بشكل صريح هنا لحل مشكلة 'Cannot infer the type'
+                    (string paymentIntentId, string clientSecret) = await _stripeService.GetPaymentIntentId(
+                        appointmentType.ConsultationFee, // ✅ تم التعديل هنا من Price إلى ConsultationFee
+                        appUserIdFromClaims.ToString(),
+                        appointment.Id.ToString() // Pass the newly created appointment ID
+                    );
+
+                    var payment = new Payment
+                    {
+                        Amount = appointmentType.ConsultationFee, // ✅ تم التعديل هنا من Price إلى ConsultationFee
+                        Currency = "usd",
+                        PaymentMethod = MosefakApp.Domains.Enums.PaymentMethod.Stripe, // ✅ تم تحديد المسار الكامل هنا
+                        Status = PaymentStatus.Pending,
+                        AppointmentId = appointment.Id,
+                        StripePaymentIntentId = paymentIntentId // Store the PaymentIntentId
+                    };
+
+                    await _unitOfWork.Repository<Payment>().AddEntityAsync(payment);
+
+                    // Commit the payment to the database
+                    if (await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false) <= 0)
+                        throw new Exception("Failed to save payment information.");
 
                     // 6️⃣ Commit the transaction.
                     await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -398,27 +424,27 @@ namespace MosefakApi.Business.Services
                         {
                             await _firebaseService.SendNotificationAsync(
                                 user.FcmToken,
-                                "Appointment Booked",
-                                $"Hi {user.FirstName} {user.LastName}, a patient has booked an appointment on {appointment.StartDate:dd/MM/yyyy HH:mm}."
+                                $"لديك موعد جديد من {user.FirstName} {user.LastName}",
+                                $"موعدك الجديد في {appointment.StartDate.ToString("dd/MM/yyyy HH:mm")}"
                             );
                         }
                         catch (Exception ex)
                         {
-                            _loggerService.LogError("Failed to send booking notification for appointment {AppointmentId}: {ErrorMessage}",
-                                appointment.Id, ex.Message);
+                            _loggerService.LogError($"Failed to send notification to doctor {doctor.AppUserId}: {ex.Message}");
                         }
                     }
-                    // TODO: Remove appointments cache
 
                     return true;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                    await transaction.RollbackAsync();
+                    _loggerService.LogError($"Failed to book appointment: {ex.Message}", ex);
                     throw;
                 }
             });
         }
+
 
 
         private async Task<bool> IsTimeSlotAvailable(int doctorId, DateTimeOffset startDate, DateTimeOffset endDate)

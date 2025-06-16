@@ -18,6 +18,9 @@
         Wallet,
 
         [EnumMember(Value = "Cash")]
-        Cash
+        Cash,
+
+        [EnumMember(Value = "Stripe")] // ✅ تم إضافة هذا السطر
+        Stripe
     }
 }
