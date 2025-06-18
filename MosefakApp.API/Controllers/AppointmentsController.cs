@@ -330,16 +330,21 @@ namespace MosefakApp.API.Controllers
         [HttpGet("doctor/patient-data")]
         [RequiredPermission(Permissions.Appointments.ViewDoctorAppointments)]
         public async Task<ActionResult<PaginatedResponse<AppointmentPatientResponse>>> GetDoctorAppointmentsWithPatientData(
+        [FromQuery] string doctorId,
         [FromQuery] AppointmentStatus? status = null,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
         {
-            int doctorId = User.GetUserId();
+            
+            var unprotectedDoctorId = UnprotectId(doctorId);
+
+            if(unprotectedDoctorId is null)
+                return BadRequest("Invalid ID");
 
             // Fetch paginated doctor appointments
             var (appointments, totalPages) = await _appointmentsService.GetDoctorAppointmentsWithPatientData(
-                doctorId, status, pageNumber, pageSize, cancellationToken);
+                unprotectedDoctorId.Value, status, pageNumber, pageSize, cancellationToken);
 
             if (!appointments.Any())
             {

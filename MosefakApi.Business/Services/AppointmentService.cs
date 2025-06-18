@@ -358,6 +358,22 @@ namespace MosefakApi.Business.Services
                     // 3️⃣ Calculate the appointment\"s end time by adding the duration to the start date.
                     var endTime = request.StartDate.Add(appointmentType.Duration);
 
+                    ///...
+                    // 4️⃣ Check if the new time slot is in the past.
+                    var now = DateTime.Now.Date;
+                    var requestDate = request.StartDate.Date;
+
+                    if (requestDate < now)
+                    {
+                        _loggerService.LogWarning("Attempted to book a time slot on a past date: {StartDate}.", request.StartDate);
+                        throw new BadRequest("Cannot book appointment; the selected date is in the past. Please choose a future date.");
+                    }
+                    else if (requestDate == now && request.StartDate.TimeOfDay <= DateTime.Now.TimeOfDay)
+                    {
+                        _loggerService.LogWarning("Attempted to book a time slot in the past: {StartDate}.", request.StartDate);
+                        throw new BadRequest("Cannot book appointment; the selected time slot is in the past. Please choose a future time.");
+                    }
+                    //....
                     // 4️⃣ Check if the new time slot is available.
                     if (!await IsTimeSlotAvailable(doctor.Id, request.StartDate, endTime).ConfigureAwait(false))
                     {
@@ -1073,7 +1089,7 @@ namespace MosefakApi.Business.Services
         {
             (var items, var totalCount) = await _unitOfWork.Repository<Appointment>()
                 .GetAllAsync(
-                    x => x.Doctor.AppUserId == doctorId && (status == null || x.AppointmentStatus == status),
+                    x => x.DoctorId == doctorId && (status == null || x.AppointmentStatus == status),
                     query => query.Include(x => x.AppointmentType).Include(x => x.Doctor).ThenInclude(x => x.Specializations),
                     pageNumber,
                     pageSize)
