@@ -1071,10 +1071,18 @@ namespace MosefakApi.Business.Services
 
         private async Task<(IEnumerable<Appointment> appointments,int totalPages)> FetchPatientAppointments(int userId, AppointmentStatus? status, int pageNumber = 1, int pageSize = 10)
         {
+            //(var items, var totalCount) = await _unitOfWork.Repository<Appointment>()
+            //    .GetAllAsync(
+            //        x => x.PatientId == userId && (status == null || x.AppointmentStatus == status),
+            //        query => query.Include(x => x.AppointmentType).Include(x => x.Doctor).ThenInclude(x => x.Specializations),
+            //        pageNumber,
+            //        pageSize)
+            //    .ConfigureAwait(false);
+
             (var items, var totalCount) = await _unitOfWork.Repository<Appointment>()
                 .GetAllAsync(
                     x => x.PatientId == userId && (status == null || x.AppointmentStatus == status),
-                    query => query.Include(x => x.AppointmentType).Include(x => x.Doctor).ThenInclude(x => x.Specializations),
+                    query => query.Include(x => x.AppointmentType).Include(x => x.Doctor).ThenInclude(x => x.Specializations),x=> x.CreatedAt,true,
                     pageNumber,
                     pageSize)
                 .ConfigureAwait(false);
