@@ -1,15 +1,21 @@
-﻿namespace MosefakApi.Business.Services.FireBase
+﻿using FirebaseAdmin.Messaging; // هذا الـ using ضروري لـ Firebase Notification
+using Microsoft.Extensions.Configuration;
+using MosefakApp.Core.IServices.Logging;
+using System.Threading;
+using System.Threading.Tasks;
+
+// لتجنب تضارب الأسماء مع MosefakApp.Domains.Entities.Notification
+// يمكننا استخدام اسم مستعار لـ FirebaseAdmin.Messaging.Notification
+using FirebaseNotification = FirebaseAdmin.Messaging.Notification;
+
+namespace MosefakApi.Business.Services.FireBase
 {
     public class FirebaseService : IFirebaseService
     {
-        private readonly string _serverKey;
-        private readonly HttpClient _httpClient;
-        private readonly ILoggerService _logger; // ✅ Logging
+        private readonly ILoggerService _logger;
 
-        public FirebaseService(IConfiguration configuration, HttpClient httpClient, ILoggerService logger)
+        public FirebaseService(ILoggerService logger)
         {
-            _serverKey = configuration["Firebase:ServerKey"]!;
-            _httpClient = httpClient; // ✅ Injected `HttpClient` instead of new instance
             _logger = logger;
         }
 
@@ -21,49 +27,84 @@
                 return false;
             }
 
-            var url = "https://fcm.googleapis.com/fcm/send";
-            var payload = new
-            {
-                to = fcmToken,
-                notification = new
-                {
-                    title,
-                    body = message
-                }
-            };
-
-            var jsonPayload = JsonConvert.SerializeObject(payload);
-            var request = new HttpRequestMessage(HttpMethod.Post, url)
-            {
-                Headers = { { "Authorization", $"key={_serverKey}" } },
-                Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json")
-            };
-
             try
             {
-                var response = await _httpClient.SendAsync(request, cancellationToken);
-
-                if (!response.IsSuccessStatusCode)
+                var firebaseMessage = new Message()
                 {
-                    var errorResponse = await response.Content.ReadAsStringAsync();
-                    _logger.LogError($"🔥 Firebase Notification Failed: {errorResponse} (Status Code: {response.StatusCode})");
-                    return false;
-                }
+                    Token = fcmToken,
+                    Notification = new FirebaseNotification
+                    {
+                        Title = title,
+                        Body = message
+                    },
+                };
 
-                _logger.LogInfo($"✅ Firebase Notification Sent Successfully to {fcmToken}");
+                string response = await FirebaseMessaging.DefaultInstance.SendAsync(firebaseMessage, cancellationToken);
+
+                _logger.LogInfo($"✅ Firebase Notification Sent Successfully to {fcmToken}. Response: {response}");
                 return true;
             }
-            catch (HttpRequestException httpEx)
+            catch (FirebaseAdmin.FirebaseException fbEx)
             {
-                _logger.LogError($"🚨 HTTP Request Error while sending Firebase notification: {httpEx.Message}");
+                _logger.LogError($"🔥 Firebase Notification Failed (FirebaseException): {fbEx.Message}", fbEx);
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"❌ Unexpected Error while sending Firebase notification: {ex.Message}");
+                _logger.LogError($"❌ Unexpected Error while sending Firebase notification: {ex.Message}", ex);
+                return false;
+            }
+        }
+
+        // تطبيق الدالة الجديدة لإرسال الإشعارات إلى عدة أجهزة
+        public async Task<bool> SendNotificationsAsync(List<string> fcmTokens, string title, string message, CancellationToken cancellationToken = default)
+        {
+            if (fcmTokens == null || !fcmTokens.Any())
+            {
+                _logger.LogWarning("FCM token list is empty. No notifications sent.");
+                return false;
+            }
+
+            try
+            {
+                var multicastMessage = new MulticastMessage()
+                {
+                    Tokens = fcmTokens,
+                    Notification = new FirebaseNotification
+                    {
+                        Title = title,
+                        Body = message
+                    }
+                };
+
+                var response = await FirebaseMessaging.DefaultInstance.SendEachForMulticastAsync(multicastMessage, cancellationToken);
+
+                if (response.FailureCount > 0)
+                {
+                    _logger.LogError($"🔥 Firebase Multicast Notification Failed. Success: {response.SuccessCount}, Failure: {response.FailureCount}");
+                    foreach (var resp in response.Responses)
+                    {
+                        if (!resp.IsSuccess)
+                        {
+                            _logger.LogError($"  Failure Reason: {resp.Exception?.Message ?? resp.Exception?.InnerException?.Message}");
+                        }
+                    }
+                    return false;
+                }
+
+                _logger.LogInfo($"✅ Firebase Multicast Notification Sent Successfully to {response.SuccessCount} devices.");
+                return true;
+            }
+            catch (FirebaseAdmin.FirebaseException fbEx)
+            {
+                _logger.LogError( $"🔥 Firebase Multicast Notification Failed (FirebaseException): {fbEx.Message}", fbEx);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"❌ Unexpected Error while sending Firebase multicast notification: {ex.Message}", ex);
                 return false;
             }
         }
     }
-
 }

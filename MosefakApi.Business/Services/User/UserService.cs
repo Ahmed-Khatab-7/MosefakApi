@@ -343,7 +343,19 @@ namespace MosefakApi.Business.Services.User
 
         #endregion
 
-       
+        public async Task<List<string>> GetAllFcmTokensAsync()
+        {
+            return await _userManager.Users
+                                .Where(u => !string.IsNullOrEmpty(u.FcmToken))
+                                .Select(u => u.FcmToken!)
+                                .ToListAsync();
+        }
+
+        public async Task<string?> GetFcmTokenByUserIdAsync(int userId) // تم التعديل ليتوافق مع AppUser.Id
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            return user?.FcmToken;
+        }
         public async Task<bool> UpdateFcmToken(int userId, UpdateFcmTokenDto model)
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());

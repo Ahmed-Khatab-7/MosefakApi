@@ -1,9 +1,10 @@
 ﻿using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using MosefakApi.Business.Services.FireBase;
+using System.Configuration;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddUserSecrets<Program>(); // 👈 Load from User Secrets
@@ -30,14 +31,20 @@ builder.Services.AddMemoryCache();
 // ✅ Configure Serilog from `appsettings.json`
 builder.Host.UseCustomSerilog();
 
-var credPath = Path.Combine(
-    builder.Environment.ContentRootPath,
-    "Credentials",
-    "mosefak-firebase-credentials.json");
-FirebaseApp.Create(new AppOptions
+var firebaseCredentialsPath = Path.Combine(builder.Environment.ContentRootPath, builder.Configuration["Firebase:ServiceAccountKeyPath"]!);
+
+if (System.IO.File.Exists(firebaseCredentialsPath))
 {
-    Credential = GoogleCredential.FromFile(credPath)
-});
+    FirebaseApp.Create(new AppOptions()
+    {
+        Credential = GoogleCredential.FromFile(firebaseCredentialsPath)
+    });
+    builder.Services.AddSingleton<IFirebaseService, FirebaseService>();
+}
+else
+{
+    Console.WriteLine($"WARNING: Firebase service account key file not found at {firebaseCredentialsPath}. Firebase notifications will be disabled.");
+}
 
 // Call Container here
 

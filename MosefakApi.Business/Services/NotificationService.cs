@@ -11,11 +11,11 @@
             _userManager = userManager;
         }
 
-        public async Task<PaginatedResponse<NotificationResponse>> GetUserNotifications(
+        public async Task<PaginatedResponse<NotificationResponse>> GetUserNotificationsAsync(
         int userId,
-        CancellationToken cancellationToken = default,
         int page = 1,
-        int pageSize = 10)
+        int pageSize = 10,
+        CancellationToken cancellationToken = default)
         {
             var (notifications, totalCount) = await _unitOfWork.Repository<Notification>()
                 .GetAllAsync(x => x.UserId == userId, null, x => x.CreatedAt, true, page, pageSize);
@@ -40,7 +40,7 @@
             var response = notifications.Select(item => new NotificationResponse
             {
                 CreatedAt = item.CreatedAt,
-                Message = item.Message,
+                Body = item.Message,
                 Title = item.Title,
                 FullNameUser = userNames.TryGetValue(item.UserId, out var fullName) ? fullName : "Unknown User"
             }).ToList();
@@ -55,7 +55,27 @@
         }
 
 
-        public async Task<bool> MarkNotificationAsRead(int userId, int notificationId, CancellationToken cancellationToken = default)
+
+        public async Task<NotificationResponse?> GetNotificationByIdAsync(int notificationId, CancellationToken cancellationToken = default)
+        {
+            var notification = await _unitOfWork.Repository<Notification>().FirstOrDefaultAsync(n => n.Id == notificationId);
+            if (notification == null)
+                return null; // ✅ Return null if not found
+            var response = new NotificationResponse
+            {
+                Id = notification.Id,
+                UserId = notification.UserId,
+                Title = notification.Title,
+                Body = notification.Message,
+                IsRead = notification.IsRead,
+                CreatedAt = notification.CreatedAt
+            };
+
+            return response;
+        }
+
+
+        public async Task<bool> MarkNotificationAsReadAsync(int userId, int notificationId, CancellationToken cancellationToken = default)
         {
             var notification = await _unitOfWork.Repository<Notification>()
                 .FirstOrDefaultAsync(x => x.Id == notificationId && x.UserId == userId);
@@ -70,6 +90,23 @@
 
             var result = await _unitOfWork.CommitAsync(cancellationToken) > 0;
             return result;
+        }
+       
+
+        public async Task<bool> AddNotificationAsync(AddNotificationRequest request, CancellationToken cancellationToken = default)
+        {
+            var notification = new Notification
+            {
+                UserId = request.UserId,
+                Title = request.Title,
+                Message = request.Body, // تأكد من أن هذا يتطابق مع اسم الخاصية في Notification entity
+                IsRead = request.IsRead,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            await _unitOfWork.Repository<Notification>().AddEntityAsync(notification);
+            await _unitOfWork.CommitAsync();
+            return true;
         }
 
     }

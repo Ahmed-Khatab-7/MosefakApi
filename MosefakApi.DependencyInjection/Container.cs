@@ -113,7 +113,6 @@ namespace MosefakApi.DependencyInjection
             services.AddScoped(typeof(IReviewService), typeof(ReviewService));
             services.AddScoped<IIdProtectorService, IdProtectorService>();
             services.AddSingleton<ICacheService, CacheService>();
-            services.AddHttpClient<IFirebaseService, FirebaseService>();
             services.AddScoped(typeof(INotificationService), typeof(NotificationService));
             services.AddSingleton<ILoggerService, LoggerService>();
             services.AddSingleton<IStripeService, StripeService>();

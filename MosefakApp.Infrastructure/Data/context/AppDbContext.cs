@@ -14,6 +14,7 @@
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Specialization> Specializations { get; set; }
         public DbSet<WorkingTime> WorkingTimes { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
         public DbSet<ContactUs> ContactUs { get; set; }
 
         private readonly IHttpContextAccessor _httpContextAccessor;
