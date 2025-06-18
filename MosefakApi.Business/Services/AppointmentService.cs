@@ -13,12 +13,12 @@ namespace MosefakApi.Business.Services
         private readonly IConfiguration _configuration;
         private readonly ILoggerService _loggerService;
         private readonly IIdProtectorService _Protector;
-        private readonly IFirebaseService _firebaseService;
+        private readonly INotificationService _notificationService;
         private readonly string _baseUrl;
 
         public AppointmentService(
             IUnitOfWork unitOfWork, UserManager<AppUser> userManager, ICacheService cacheService,
-            IStripeService stripeService, IMapper mapper, ILoggerService loggerService, IIdProtectorService protector, IConfiguration configuration, IFirebaseService firebaseService)
+            IStripeService stripeService, IMapper mapper, ILoggerService loggerService, IIdProtectorService protector, IConfiguration configuration, INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
             _userManager = userManager;
@@ -29,7 +29,7 @@ namespace MosefakApi.Business.Services
             _loggerService = loggerService;
             _Protector = protector;
             _baseUrl = _configuration["BaseUrl"] ?? "https://default-url.com/";
-            _firebaseService = firebaseService;
+            _notificationService = notificationService;
         }
 
         public async Task<(List<AppointmentResponse> appointmentResponses, int totalPages)> GetPatientAppointments(
@@ -110,8 +110,10 @@ namespace MosefakApi.Business.Services
 
         public async Task<bool> CancelAppointmentByPatient(int patientId, int appointmentId, string? cancellationReason, CancellationToken cancellationToken = default)
         {
+            // [إصلاح] تم إضافة Include(x => x.Doctor) لجلب بيانات الطبيب اللازمة للإشعار
             var appointment = await _unitOfWork.GetCustomRepository<IAppointmentRepositoryAsync>()
-                .FirstOrDefaultAsync(x => x.Id == appointmentId && x.PatientId == patientId, query => query.Include(x => x.Payment))
+                .FirstOrDefaultAsync(x => x.Id == appointmentId && x.PatientId == patientId,
+                                     query => query.Include(x => x.Payment).Include(x => x.Doctor))
                 .ConfigureAwait(false);
 
             if (appointment == null)
@@ -120,7 +122,6 @@ namespace MosefakApi.Business.Services
                 throw new ItemNotFound("Appointment does not exist or you don't have permission.");
             }
 
-            // Step 2: Validate If Appointment Can Be Canceled
             if (!IsCancellable(appointment))
             {
                 _loggerService.LogWarning("Attempted to cancel an invalid appointment {AppointmentId} by patient {PatientId}.", appointmentId, patientId);
@@ -131,7 +132,6 @@ namespace MosefakApi.Business.Services
             appointment.CancelledAt = DateTimeOffset.UtcNow;
             appointment.CancellationReason = !string.IsNullOrWhiteSpace(cancellationReason) ? cancellationReason : null;
 
-            // 🔹 Check if a refund is required
             if (appointment.Payment?.Status == PaymentStatus.Paid)
             {
                 bool refundSucceeded = await _stripeService.RefundPayment(appointment.Payment.StripePaymentIntentId)
@@ -144,20 +144,23 @@ namespace MosefakApi.Business.Services
                     throw new Exception("Failed to process payment refund.");
                 }
 
-                // ✅ Update Payment Status
                 appointment.Payment.Status = PaymentStatus.Refunded;
             }
 
             await _unitOfWork.CommitAsync(cancellationToken);
             await _cacheService.RemoveCachedResponseAsync("/api/Appointments/canceled-appointments").ConfigureAwait(false);
-
             _loggerService.LogInfo("Appointment {AppointmentId} was canceled by patient {PatientId}.", appointmentId, patientId);
 
-            await NotifyDoctorAsync(appointment.DoctorId, appointment.Id);
+            // [تم التعديل] استبدال الدالة المساعدة القديمة بسطر واحد يرسل الإشعار للطبيب
+            await _notificationService.SendAndSaveNotificationAsync(
+                recipientUserId: appointment.Doctor.AppUserId,
+                title: "Appointment Canceled",
+                message: $"An appointment (ID: {appointment.Id}) has been canceled by the patient. Reason: {cancellationReason ?? "Not specified."}",
+                cancellationToken: cancellationToken
+            );
 
             return true;
         }
-
 
         public async Task<(List<AppointmentResponse> appointmentResponses, int totalPages)> GetAppointmentsByDateRange(
          int patientId,
@@ -241,7 +244,7 @@ namespace MosefakApi.Business.Services
 
         public async Task<bool> RescheduleAppointmentAsync(int appointmentId, DateTime selectedDate, TimeSlot newTimeSlot)
         {
-            var strategy = _unitOfWork.CreateExecutionStrategy(); // ✅ Use EF Core Execution Strategy
+            var strategy = _unitOfWork.CreateExecutionStrategy(); // Use EF Core Execution Strategy
 
             return await strategy.ExecuteAsync(async () =>
             {
@@ -251,8 +254,8 @@ namespace MosefakApi.Business.Services
                 {
                     var appointmentRepo = _unitOfWork.GetCustomRepository<IAppointmentRepositoryAsync>();
 
-                    // 🔍 Fetch appointment
-                    var appointment = await appointmentRepo.FirstOrDefaultAsync(x => x.Id == appointmentId);
+                    // [إصلاح] تم إضافة Include لجلب بيانات الطبيب اللازمة للإشعار
+                    var appointment = await appointmentRepo.FirstOrDefaultAsync(x => x.Id == appointmentId, q => q.Include(x => x.Doctor));
 
                     if (appointment is null)
                     {
@@ -261,7 +264,8 @@ namespace MosefakApi.Business.Services
                     }
 
                     if (appointment.AppointmentStatus == AppointmentStatus.Completed ||
-                        appointment.AppointmentStatus == AppointmentStatus.CanceledByPatient)
+                        appointment.AppointmentStatus == AppointmentStatus.CanceledByPatient ||
+                        appointment.AppointmentStatus == AppointmentStatus.CanceledByDoctor)
                     {
                         _loggerService.LogWarning("Attempted to reschedule a canceled or completed appointment {AppointmentId}.", appointmentId);
                         throw new BadRequest("Cannot reschedule a canceled or completed appointment.");
@@ -270,7 +274,6 @@ namespace MosefakApi.Business.Services
                     if (newTimeSlot.EndTime < newTimeSlot.StartTime)
                         throw new BadRequest("Invalid time slot. End time must be after start time.");
 
-                    // 📅 Convert TimeSlot into UTC-based DateTimeOffsets
                     var startTimeOffset = new DateTimeOffset(
                         selectedDate.Year, selectedDate.Month, selectedDate.Day,
                         newTimeSlot.StartTime.Hour, newTimeSlot.StartTime.Minute, 0,
@@ -278,35 +281,30 @@ namespace MosefakApi.Business.Services
 
                     var endTimeOffset = startTimeOffset.Add(newTimeSlot.EndTime - newTimeSlot.StartTime);
 
-                    // ✅ **Check for availability**
                     if (!await appointmentRepo.IsTimeSlotAvailable(appointment.DoctorId, startTimeOffset, endTimeOffset))
                     {
                         _loggerService.LogWarning("Time slot unavailable for rescheduling appointment {AppointmentId}.", appointmentId);
                         throw new InvalidOperationException("The selected time slot is already booked.");
                     }
 
-                    // ✅ **Update appointment**
-
                     appointment.StartDate = startTimeOffset;
                     appointment.EndDate = endTimeOffset;
-                    appointment.AppointmentStatus = appointment.AppointmentStatus;
 
                     await appointmentRepo.UpdateEntityAsync(appointment);
-
-                    await _unitOfWork.CommitAsync(); // ✅ Commit changes **before** notifications
+                    await _unitOfWork.CommitAsync();
 
                     _loggerService.LogInfo("Appointment {AppointmentId} successfully rescheduled to {NewDate}.",
                         appointmentId, startTimeOffset);
 
                     await transaction.CommitAsync();
 
-                    // ✅ **Send notification outside the transaction**
-                    _ = Task.Run(async () =>
-                    {
-                        await NotifyDoctorAsync(appointment.DoctorId, appointmentId, startTimeOffset);
-                    });
+                    // [تم التعديل] استبدال الكود القديم بسطر واحد يرسل الإشعار للطبيب
+                    await _notificationService.SendAndSaveNotificationAsync(
+                        recipientUserId: appointment.Doctor.AppUserId,
+                        title: "Appointment Rescheduled",
+                        message: $"An appointment (ID: {appointment.Id}) has been rescheduled by the patient to {startTimeOffset:dd/MM/yyyy HH:mm}."
+                    );
 
-                    // ✅ **Clear Cache outside the transaction**
                     _ = _cacheService.RemoveCachedResponseAsync("/api/appointments/upcoming");
 
                     return true;
@@ -318,13 +316,12 @@ namespace MosefakApi.Business.Services
                         appointmentId, ex.Message);
                     throw new Exception($"Failed to reschedule appointment {appointmentId}: {ex.Message}", ex);
                 }
-          });
+            });
         }
-
 
         public async Task<bool> BookAppointment(BookAppointmentRequest request, int appUserIdFromClaims, CancellationToken cancellationToken = default)
         {
-            var strategy = _unitOfWork.CreateExecutionStrategy(); // ✅ Use EF Core Execution Strategy
+            var strategy = _unitOfWork.CreateExecutionStrategy();
 
             return await strategy.ExecuteAsync(async () =>
             {
@@ -332,39 +329,29 @@ namespace MosefakApi.Business.Services
 
                 try
                 {
-
-
-                    // 1️⃣ Retrieve the doctor with their appointment types.
                     var doctor = await _unitOfWork.GetCustomRepository<IDoctorRepositoryAsync>()
                         .FirstOrDefaultAsync(x => x.Id == int.Parse(request.DoctorId));
 
                     if (doctor == null)
                     {
-                        _loggerService.LogWarning("Attempted to book an appointment with non-existent doctor {DoctorId}.", request.DoctorId);
                         throw new ItemNotFound("Doctor does not exist.");
                     }
-                    // 2️⃣ Retrieve the specified appointment type.
 
                     var appointmentType = await _unitOfWork.Repository<AppointmentType>()
-                                                           .FirstOrDefaultAsync(x => x.Id == int.Parse(request.AppointmentTypeId) &&
-                                                                                     x.DoctorId == int.Parse(request.DoctorId));
+                        .FirstOrDefaultAsync(x => x.Id == int.Parse(request.AppointmentTypeId) && x.DoctorId == int.Parse(request.DoctorId));
 
                     if (appointmentType == null)
                     {
-                        _loggerService.LogWarning("Attempted to book an appointment with an invalid appointment type {AppointmentTypeId}.", request.AppointmentTypeId);
                         throw new ItemNotFound("This appointment type does not exist for this doctor.");
                     }
 
-                    // 3️⃣ Calculate the appointment\"s end time by adding the duration to the start date.
                     var endTime = request.StartDate.Add(appointmentType.Duration);
 
-                    // 4️⃣ Check if the new time slot is available.
                     if (!await IsTimeSlotAvailable(doctor.Id, request.StartDate, endTime).ConfigureAwait(false))
                     {
-                        _loggerService.LogWarning("Attempted to book an unavailable time slot {StartDate}.", request.StartDate);
                         throw new BadRequest("Cannot book appointment; the selected time slot is already booked. Please try another time.");
                     }
-                    // 5️⃣ Create the appointment.
+
                     var appointment = new Appointment
                     {
                         PatientId = appUserIdFromClaims,
@@ -377,63 +364,42 @@ namespace MosefakApi.Business.Services
                         ProblemDescription = !string.IsNullOrEmpty(request.ProblemDescription) ? request.ProblemDescription : null,
                     };
 
-                    await _unitOfWork.GetCustomRepository<IAppointmentRepositoryAsync>()
-                        .AddEntityAsync(appointment)
-                        .ConfigureAwait(false);
+                    await _unitOfWork.GetCustomRepository<IAppointmentRepositoryAsync>().AddEntityAsync(appointment).ConfigureAwait(false);
 
-                    // Commit the appointment to get its ID before creating payment
                     if (await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false) <= 0)
                         throw new Exception("Failed to book appointment.");
 
-                    // Generate PaymentIntent from Stripe and save Payment entity
-                    // ✅ تم تحديد النوع بشكل صريح هنا لحل مشكلة 'Cannot infer the type'
                     (string paymentIntentId, string clientSecret) = await _stripeService.GetPaymentIntentId(
-                        appointmentType.ConsultationFee, // ✅ تم التعديل هنا من Price إلى ConsultationFee
+                        appointmentType.ConsultationFee,
                         appUserIdFromClaims.ToString(),
-                        appointment.Id.ToString() // Pass the newly created appointment ID
+                        appointment.Id.ToString()
                     );
 
                     var payment = new Payment
                     {
-                        Amount = appointmentType.ConsultationFee, // ✅ تم التعديل هنا من Price إلى ConsultationFee
+                        Amount = appointmentType.ConsultationFee,
                         Currency = "usd",
-                        PaymentMethod = MosefakApp.Domains.Enums.PaymentMethod.Stripe, // ✅ تم تحديد المسار الكامل هنا
+                        PaymentMethod = MosefakApp.Domains.Enums.PaymentMethod.Stripe,
                         Status = PaymentStatus.Pending,
                         AppointmentId = appointment.Id,
-                        StripePaymentIntentId = paymentIntentId, // Store the PaymentIntentId
+                        StripePaymentIntentId = paymentIntentId,
                         ClientSecret = clientSecret,
                     };
 
                     await _unitOfWork.Repository<Payment>().AddEntityAsync(payment);
 
-                    // Commit the payment to the database
                     if (await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false) <= 0)
                         throw new Exception("Failed to save payment information.");
 
-                    // 6️⃣ Commit the transaction.
                     await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-                    // TODO: Send Notification to doctor to approve
-
-                    var user = await _userManager.Users.Where(u => u.Id == doctor.AppUserId)
-                                                       .Select(x => new { x.FirstName, x.LastName, x.FcmToken })
-                                                       .FirstOrDefaultAsync();
-
-                    if (!string.IsNullOrEmpty(user?.FcmToken))
-                    {
-                        try
-                        {
-                            await _firebaseService.SendNotificationAsync(
-                                user.FcmToken,
-                                $"لديك موعد جديد من {user.FirstName} {user.LastName}",
-                                $"موعدك الجديد في {appointment.StartDate.ToString("dd/MM/yyyy HH:mm")}"
-                            );
-                        }
-                        catch (Exception ex)
-                        {
-                            _loggerService.LogError($"Failed to send notification to doctor {doctor.AppUserId}: {ex.Message}");
-                        }
-                    }
+                    // [تم التعديل] إرسال إشعار للطبيب بوجود طلب حجز جديد
+                    await _notificationService.SendAndSaveNotificationAsync(
+                        recipientUserId: doctor.AppUserId,
+                        title: "New Booking Request",
+                        message: "You have received a new appointment request that requires your approval.",
+                        cancellationToken: cancellationToken
+                    );
 
                     return true;
                 }
@@ -457,7 +423,7 @@ namespace MosefakApi.Business.Services
 
         public async Task<bool> ApproveAppointmentByDoctor(int appointmentId)
         {
-            var strategy = _unitOfWork.CreateExecutionStrategy(); // ✅ Use EF Core Execution Strategy
+            var strategy = _unitOfWork.CreateExecutionStrategy();
 
             return await strategy.ExecuteAsync(async () =>
             {
@@ -491,29 +457,12 @@ namespace MosefakApi.Business.Services
                     await transaction.CommitAsync();
                     _loggerService.LogInfo($"Appointment {appointmentId} approved successfully.");
 
-                    // TODO: Send Notification tell patient that doctor approved his book
-
-                    var user = await _userManager.Users.Where(x => x.Id == appointment.PatientId)
-                                                       .Select(x => new { x.FcmToken, x.FirstName, x.LastName })
-                                                       .FirstOrDefaultAsync();
-
-                    if (!string.IsNullOrEmpty(user?.FcmToken))
-                    {
-                        try
-                        {
-                            await _firebaseService.SendNotificationAsync(
-                                user.FcmToken,
-                                "Appointment Approved",
-                                $"Hi {user.FirstName} {user.LastName}," +
-                                $"Your appointment has been approved. Please complete payment within 24 hours.."
-                            );
-                        }
-                        catch (Exception ex)
-                        {
-                            _loggerService.LogError("Failed to send booking notification for appointment {appointmentId}: {ErrorMessage}",
-                                appointmentId, ex.Message);
-                        }
-                    }
+                    // [تم التعديل] استبدال الكود القديم بسطر واحد يرسل الإشعار للمريض
+                    await _notificationService.SendAndSaveNotificationAsync(
+                        recipientUserId: appointment.PatientId,
+                        title: "Appointment Approved",
+                        message: "Your appointment request has been approved. Please complete the payment within 24 hours to confirm your session."
+                    );
 
                     return true;
                 }
@@ -526,9 +475,10 @@ namespace MosefakApi.Business.Services
             });
         }
 
+
         public async Task<bool> RejectAppointmentByDoctor(int appointmentId, string? rejectionReason)
         {
-            var strategy = _unitOfWork.CreateExecutionStrategy(); // ✅ Use EF Core Execution Strategy
+            var strategy = _unitOfWork.CreateExecutionStrategy();
 
             return await strategy.ExecuteAsync(async () =>
             {
@@ -556,29 +506,12 @@ namespace MosefakApi.Business.Services
                     await transaction.CommitAsync();
                     _loggerService.LogInfo($"Appointment {appointmentId} rejected successfully.");
 
-                    // TODO: Send Notification tell patient that doctor approved his book
-
-                    var user = await _userManager.Users.Where(x => x.Id == appointment.PatientId)
-                                                       .Select(x => new { x.FcmToken, x.FirstName, x.LastName })
-                                                       .FirstOrDefaultAsync();
-
-                    if (!string.IsNullOrEmpty(user?.FcmToken))
-                    {
-                        try
-                        {
-                            await _firebaseService.SendNotificationAsync(
-                                user.FcmToken,
-                                "Appointment Approved",
-                                $"Hi {user.FirstName} {user.LastName}," +
-                                $"Your appointment request was rejected. Reason: " + (rejectionReason ?? "Not specified.")
-                            );
-                        }
-                        catch (Exception ex)
-                        {
-                            _loggerService.LogError("Failed to send booking notification for appointment {appointmentId}: {ErrorMessage}",
-                                appointmentId, ex.Message);
-                        }
-                    }
+                    // [تم التعديل] إرسال إشعار للمريض بالرفض
+                    await _notificationService.SendAndSaveNotificationAsync(
+                        recipientUserId: appointment.PatientId,
+                        title: "Appointment Rejected",
+                        message: $"Unfortunately, your appointment request has been rejected. Reason: {rejectionReason ?? "Not specified."}"
+                    );
 
                     return true;
                 }
@@ -590,7 +523,6 @@ namespace MosefakApi.Business.Services
                 }
             });
         }
-
 
         public async Task<(List<AppointmentResponse> appointmentResponses, int totalPages)> GetPendingAppointmentsForDoctor(
             int doctorId, int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default)
@@ -624,7 +556,7 @@ namespace MosefakApi.Business.Services
 
         public async Task<bool> MarkAppointmentAsCompleted(int appointmentId)
         {
-            var strategy = _unitOfWork.CreateExecutionStrategy(); // ✅ Use EF Core Execution Strategy
+            var strategy = _unitOfWork.CreateExecutionStrategy();
 
             return await strategy.ExecuteAsync(async () =>
             {
@@ -652,29 +584,12 @@ namespace MosefakApi.Business.Services
                     await transaction.CommitAsync();
                     _loggerService.LogInfo($"Appointment {appointmentId} marked as completed.");
 
-                    // TODO: Send Notification tell patient that doctor completed his appointment
-
-                    var user = await _userManager.Users.Where(x => x.Id == appointment.PatientId)
-                                                       .Select(x => new { x.FcmToken, x.FirstName, x.LastName })
-                                                       .FirstOrDefaultAsync();
-
-                    if (!string.IsNullOrEmpty(user?.FcmToken))
-                    {
-                        try
-                        {
-                            await _firebaseService.SendNotificationAsync(
-                                user.FcmToken,
-                                "Appointment Completed",
-                                $"Hi {user.FirstName} {user.LastName}," +
-                                $"Your appointment has been successfully completed."
-                            );
-                        }
-                        catch (Exception ex)
-                        {
-                            _loggerService.LogError("Failed to send booking notification for appointment {appointmentId}: {ErrorMessage}",
-                                appointmentId, ex.Message);
-                        }
-                    }
+                    // [تم التعديل] إرسال إشعار للمريض باكتمال الموعد
+                    await _notificationService.SendAndSaveNotificationAsync(
+                        recipientUserId: appointment.PatientId,
+                        title: "Appointment Completed",
+                        message: "Your appointment has been marked as completed. We hope you had a great experience!"
+                    );
 
                     return true;
                 }
@@ -686,7 +601,6 @@ namespace MosefakApi.Business.Services
                 }
             });
         }
-
         public async Task<string> CreatePaymentIntent(int appointmentId, CancellationToken cancellationToken = default)
         {
             var appointment = await _unitOfWork.GetCustomRepository<IAppointmentRepositoryAsync>()
@@ -878,7 +792,6 @@ namespace MosefakApi.Business.Services
                     throw new Exception("Failed to process payment refund.");
                 }
 
-                // ✅ Update Appointment & Payment Status after Refund
                 appointment.Payment.Status = PaymentStatus.Refunded;
             }
 
@@ -895,36 +808,17 @@ namespace MosefakApi.Business.Services
                 throw new Exception("Failed to cancel appointment.");
             }
 
-            // ✅ Notify patient about the cancellation & refund
-            //await _notificationService.SendNotificationAsync(appointment.PatientId,
-            //    $"Your appointment {appointmentId} has been canceled. If applicable, your refund is being processed.");
-
-            var user = await _userManager.Users.Where(x => x.Id == appointment.PatientId)
-                                                      .Select(x => new { x.FcmToken, x.FirstName, x.LastName })
-                                                      .FirstOrDefaultAsync();
-
-            if (!string.IsNullOrEmpty(user?.FcmToken))
-            {
-                try
-                {
-                    await _firebaseService.SendNotificationAsync(
-                        user.FcmToken,
-                        "Appointment Canceled",
-                        $"Hi {user.FirstName} {user.LastName}," +
-                        $"Your appointment {appointmentId} has been canceled. If applicable, your refund is being processed."
-                    );
-                }
-                catch (Exception ex)
-                {
-                    _loggerService.LogError("Failed to send booking notification for appointment {appointmentId}: {ErrorMessage}",
-                        appointmentId, ex.Message);
-                }
-            }
+            // [تم التعديل] إرسال إشعار للمريض بإلغاء الموعد من جهة الطبيب
+            await _notificationService.SendAndSaveNotificationAsync(
+                recipientUserId: appointment.PatientId,
+                title: "Appointment Canceled by Doctor",
+                message: $"We are sorry to inform you that your appointment (ID: {appointmentId}) has been canceled by the doctor. A refund will be processed if applicable.",
+                cancellationToken: cancellationToken
+            );
 
             _loggerService.LogInfo("Appointment {AppointmentId} successfully canceled by doctor.", appointmentId);
             return true;
         }
-
 
 
         public async Task AutoCancelUnpaidAppointments() // Scheduled with Hangfire
@@ -935,7 +829,7 @@ namespace MosefakApi.Business.Services
 
                 var appointmentRepo = _unitOfWork.GetCustomRepository<IAppointmentRepositoryAsync>();
 
-                // Define the criteria for unpaid and expired appointments
+                // جلب كل المواعيد التي تمت الموافقة عليها ولكن لم يتم دفعها وتجاوزت المهلة
                 var expiredAppointments = await appointmentRepo.GetAllAsync(
                     x => x.PaymentStatus == PaymentStatus.Pending &&
                          x.AppointmentStatus == AppointmentStatus.PendingPayment &&
@@ -948,7 +842,7 @@ namespace MosefakApi.Business.Services
                     return;
                 }
 
-                // ✅ Use Batch Update for better efficiency
+                // احتفظنا بهذا الجزء لأنه فعال ويقوم بتحديث كل المواعيد في قاعدة البيانات مرة واحدة
                 await appointmentRepo.ExecuteUpdateAsync(
                     x => expiredAppointments.Select(a => a.Id).Contains(x.Id),
                     x => new Appointment
@@ -960,33 +854,16 @@ namespace MosefakApi.Business.Services
 
                 _loggerService.LogInfo($"Successfully auto-canceled {expiredAppointments.Count} unpaid appointments.");
 
-                // 🔹 Fetch patients in a single query
-                var patientIds = expiredAppointments.Select(x => x.PatientId).Distinct().ToList();
-                var users = await _userManager.Users
-                    .Where(u => patientIds.Contains(u.Id))
-                    .Select(u => new { u.Id, u.FcmToken, u.FirstName, u.LastName })
-                    .ToDictionaryAsync(u => u.Id);
-
-                // 🔹 Send notifications in parallel
-                await Parallel.ForEachAsync(expiredAppointments, async (appointment, _) =>
+                // [تم التعديل] إزالة الكود المعقد القديم واستبداله بحلقة بسيطة
+                // ترسل إشعاراً لكل مريض تم إلغاء موعده
+                foreach (var appointment in expiredAppointments)
                 {
-                    if (users.TryGetValue(appointment.PatientId, out var user) && !string.IsNullOrEmpty(user.FcmToken))
-                    {
-                        try
-                        {
-                            await _firebaseService.SendNotificationAsync(
-                                user.FcmToken,
-                                "Appointment Auto-Canceled",
-                                $"Hi {user.FirstName} {user.LastName}, Your appointment on {appointment.StartDate:MMM dd, yyyy} at {appointment.StartDate:hh:mm tt} was auto-canceled due to non-payment."
-                            );
-                        }
-                        catch (Exception notificationEx)
-                        {
-                            _loggerService.LogError($"Failed to send notification for appointment {appointment.Id}: {notificationEx.Message}");
-                        }
-                    }
-                });
-
+                    await _notificationService.SendAndSaveNotificationAsync(
+                        recipientUserId: appointment.PatientId,
+                        title: "Appointment Auto-Canceled",
+                        message: "Your appointment was automatically canceled because the payment was not completed within the required timeframe."
+                    );
+                }
             }
             catch (Exception ex)
             {
@@ -995,34 +872,34 @@ namespace MosefakApi.Business.Services
             }
         }
 
-        private async Task NotifyDoctorAsync(int doctorId, int appointmentId, DateTimeOffset newDate)
-        {
-            var doctor = await _unitOfWork.Repository<Doctor>().FirstOrDefaultAsync(d => d.Id == doctorId);
+        //private async Task NotifyDoctorAsync(int doctorId, int appointmentId, DateTimeOffset newDate)
+        //{
+        //    var doctor = await _unitOfWork.Repository<Doctor>().FirstOrDefaultAsync(d => d.Id == doctorId);
 
-            if (doctor == null) return;
+        //    if (doctor == null) return;
 
-            var user = await _userManager.Users
-                .Where(u => u.Id == doctor.AppUserId)
-                .Select(u => new { u.FirstName, u.LastName, u.FcmToken })
-                .FirstOrDefaultAsync();
+        //    var user = await _userManager.Users
+        //        .Where(u => u.Id == doctor.AppUserId)
+        //        .Select(u => new { u.FirstName, u.LastName, u.FcmToken })
+        //        .FirstOrDefaultAsync();
 
-            if (!string.IsNullOrEmpty(user?.FcmToken))
-            {
-                try
-                {
-                    await _firebaseService.SendNotificationAsync(
-                        user.FcmToken,
-                        "Appointment Rescheduled",
-                        $"Hi {user.FirstName} {user.LastName}, " +
-                        $"A patient has rescheduled an appointment to {newDate:dd/MM/yyyy HH:mm}.");
-                }
-                catch (Exception ex)
-                {
-                    _loggerService.LogError("Failed to send reschedule notification for appointment {AppointmentId}: {ErrorMessage}",
-                        appointmentId, ex.Message);
-                }
-            }
-        }
+        //    if (!string.IsNullOrEmpty(user?.FcmToken))
+        //    {
+        //        try
+        //        {
+        //            await _firebaseService.SendNotificationAsync(
+        //                user.FcmToken,
+        //                "Appointment Rescheduled",
+        //                $"Hi {user.FirstName} {user.LastName}, " +
+        //                $"A patient has rescheduled an appointment to {newDate:dd/MM/yyyy HH:mm}.");
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            _loggerService.LogError("Failed to send reschedule notification for appointment {AppointmentId}: {ErrorMessage}",
+        //                appointmentId, ex.Message);
+        //        }
+        //    }
+        //}
 
         private bool IsCancellable(Appointment appointment)
         {
@@ -1034,23 +911,23 @@ namespace MosefakApi.Business.Services
             };
         }
 
-        private async Task NotifyDoctorAsync(int doctorId, int appointmentId)
-        {
-            var doctorInfo = await _unitOfWork.Repository<Doctor>().GetByIdAsync(doctorId);
+        //private async Task NotifyDoctorAsync(int doctorId, int appointmentId)
+        //{
+        //    var doctorInfo = await _unitOfWork.Repository<Doctor>().GetByIdAsync(doctorId);
 
-            if (doctorInfo == null) return;
+        //    if (doctorInfo == null) return;
 
-            var user = await _userManager.Users
-                .Where(u => u.Id == doctorInfo.AppUserId)
-                .Select(u => new { u.FcmToken, u.FirstName, u.LastName })
-                .FirstOrDefaultAsync();
+        //    var user = await _userManager.Users
+        //        .Where(u => u.Id == doctorInfo.AppUserId)
+        //        .Select(u => new { u.FcmToken, u.FirstName, u.LastName })
+        //        .FirstOrDefaultAsync();
 
-            if (user?.FcmToken != null)
-            {
-                await _firebaseService.SendNotificationAsync(user.FcmToken, "Cancellation",
-                    $"The patient {user.FirstName} {user.LastName} has canceled appointment {appointmentId}. If payment was made, a refund has been processed.");
-            }
-        }
+        //    if (user?.FcmToken != null)
+        //    {
+        //        await _firebaseService.SendNotificationAsync(user.FcmToken, "Cancellation",
+        //            $"The patient {user.FirstName} {user.LastName} has canceled appointment {appointmentId}. If payment was made, a refund has been processed.");
+        //    }
+        //}
 
 
         private async Task<(IEnumerable<Appointment> appointments,int totalPages)> FetchPatientAppointments(int userId, AppointmentStatus? status, int pageNumber = 1, int pageSize = 10)
