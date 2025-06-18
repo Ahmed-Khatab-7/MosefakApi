@@ -2,7 +2,7 @@
 {
     public class NotificationResponse
     {
-        public int Id { get; set; }
+        public string Id { get; set; } = null!;
         public int UserId { get; set; }
         public string FullNameUser { get; set; } = null!;
         public string Title { get; set; } = null!;

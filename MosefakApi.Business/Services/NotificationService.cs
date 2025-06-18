@@ -1,113 +1,237 @@
-﻿namespace MosefakApi.Business.Services
+﻿// In: Business/Services/NotificationService.cs
+
+using Microsoft.EntityFrameworkCore;
+using MosefakApp.Core.IUnit;
+using MosefakApp.Domains.Entities;
+using System.Security.Claims;
+// تأكد من وجود using لخدمة اللوجر
+// using MosefakApp.Core.Services;
+
+public class NotificationService : INotificationService
 {
-    public class NotificationService : INotificationService
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly UserManager<AppUser> _userManager;
+    private readonly IFirebaseService _firebaseService;
+    private readonly IMapper _mapper;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILoggerService _logger;
+
+    public NotificationService(
+        IUnitOfWork unitOfWork,
+        UserManager<AppUser> userManager,
+        IFirebaseService firebaseService,
+        IMapper mapper,
+        IHttpContextAccessor httpContextAccessor,
+        ILoggerService logger)
     {
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly UserManager<AppUser> _userManager;
+        _unitOfWork = unitOfWork;
+        _userManager = userManager;
+        _firebaseService = firebaseService;
+        _mapper = mapper;
+        _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
+    }
 
-        public NotificationService(IUnitOfWork unitOfWork, UserManager<AppUser> userManager)
+    public async Task SendAndSaveNotificationAsync(int recipientUserId, string title, string message, CancellationToken cancellationToken = default)
+    {
+        var recipient = await _userManager.FindByIdAsync(recipientUserId.ToString());
+        if (recipient == null)
         {
-            _unitOfWork = unitOfWork;
-            _userManager = userManager;
+            _logger.LogWarning($"Attempted to send a notification to a non-existent user with ID {recipientUserId}.");
+            return;
         }
 
-        public async Task<PaginatedResponse<NotificationResponse>> GetUserNotificationsAsync(
-        int userId,
-        int page = 1,
-        int pageSize = 10,
-        CancellationToken cancellationToken = default)
+        var notification = new Notification {
+            UserId = recipientUserId,       // ID المستخدم الذي سيستقبل الإشعار
+            Title = title,                  // عنوان الإشعار
+            Message = message,              // نص الإشعار
+            IsRead = false                 // القيمة الافتراضية، لم يقرأ بعد
+        };
+        await _unitOfWork.Repository<Notification>().AddEntityAsync(notification);
+        await _unitOfWork.CommitAsync(cancellationToken);
+
+        if (!string.IsNullOrEmpty(recipient.FcmToken))
         {
-            var (notifications, totalCount) = await _unitOfWork.Repository<Notification>()
-                .GetAllAsync(x => x.UserId == userId, null, x => x.CreatedAt, true, page, pageSize);
-
-            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-
-            if (!notifications.Any()) // ✅ No need for `null` check
+            try
             {
-                return new PaginatedResponse<NotificationResponse>
-                {
-                    Data = [],
-                    CurrentPage = page,
-                    PageSize = pageSize,
-                    TotalPages = totalPages
-                };
+                await _firebaseService.SendNotificationAsync(recipient.FcmToken, title, message, cancellationToken);
             }
-
-            var userNames = await _userManager.Users
-                .Where(x => notifications.Select(n => n.UserId).Contains(x.Id)) // ✅ Optimized lookup
-                .ToDictionaryAsync(x => x.Id, x => $"{x.FirstName} {x.LastName}", cancellationToken);
-
-            var response = notifications.Select(item => new NotificationResponse
+            catch (Exception ex)
             {
-                CreatedAt = item.CreatedAt,
-                Body = item.Message,
-                Title = item.Title,
-                FullNameUser = userNames.TryGetValue(item.UserId, out var fullName) ? fullName : "Unknown User"
-            }).ToList();
-
-            return new PaginatedResponse<NotificationResponse>
-            {
-                CurrentPage = page,
-                Data = response,
-                PageSize = pageSize,
-                TotalPages = totalPages
-            };
+                _logger.LogError($"Firebase push notification failed for user {recipientUserId}. Exception: {ex.Message}");
+            }
         }
+    }
+
+    public async Task SendAndSaveBroadcastAsync(string title, string message, CancellationToken cancellationToken = default)
+    {
+        var usersWithTokens = await _userManager.Users
+        .Where(u => !u.IsDeleted && !string.IsNullOrEmpty(u.FcmToken))
+        .Select(u => new { u.Id, u.FcmToken })
+        .ToListAsync(cancellationToken);
+
+        if (!usersWithTokens.Any()) return;
 
 
+        var notifications = usersWithTokens.Select(u => new Notification {
+            UserId = u.Id,                  // ID المستخدم من اللفة الحالية
+            Title = title,                  // العنوان ثابت للجميع
+            Message = message,              // النص ثابت للجميع
+            IsRead = false,                 // القيمة الافتراضية
+        }).ToList();
+        await _unitOfWork.Repository<Notification>().AddRangeAsync(notifications);
+        await _unitOfWork.CommitAsync(cancellationToken);
 
-        public async Task<NotificationResponse?> GetNotificationByIdAsync(int notificationId, CancellationToken cancellationToken = default)
+        var fcmTokens = usersWithTokens.Select(u => u.FcmToken!).ToList();
+        try
         {
-            var notification = await _unitOfWork.Repository<Notification>().FirstOrDefaultAsync(n => n.Id == notificationId);
-            if (notification == null)
-                return null; // ✅ Return null if not found
-            var response = new NotificationResponse
-            {
-                Id = notification.Id,
-                UserId = notification.UserId,
-                Title = notification.Title,
-                Body = notification.Message,
-                IsRead = notification.IsRead,
-                CreatedAt = notification.CreatedAt
-            };
-
-            return response;
+            await _firebaseService.SendNotificationsAsync(fcmTokens, title, message, cancellationToken);
         }
-
-
-        public async Task<bool> MarkNotificationAsReadAsync(int userId, int notificationId, CancellationToken cancellationToken = default)
+        catch (Exception ex)
         {
-            var notification = await _unitOfWork.Repository<Notification>()
-                .FirstOrDefaultAsync(x => x.Id == notificationId && x.UserId == userId);
+            _logger.LogError($"Firebase broadcast push notification failed. Exception: {ex.Message}");
+        }
+    }
 
-            if (notification == null)
-                throw new ItemNotFound("Notification not found.");
+    public async Task<PaginatedResponse<NotificationResponse>> GetMyNotificationsAsync(int currentUserId, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default)
+    {
+        (var notifications, var totalCount) = await _unitOfWork.Repository<Notification>()
+            .GetAllAsync(
+                expression: x => x.UserId == currentUserId && !x.IsDeleted,
+                include: null,
+                pageNumber: page,
+                pageSize: pageSize);
 
-            if (notification.IsRead)
-                return true; // ✅ Prevents unnecessary DB writes
+        // تحويل القائمة باستخدام الدالة المساعدة
+        var mappedNotifications = notifications.Select(MapToNotificationResponse).ToList();
 
+        // الترتيب بعد التحويل
+        var sortedNotifications = mappedNotifications.OrderByDescending(n => n.CreatedAt).ToList();
+
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+        return new PaginatedResponse<NotificationResponse>
+        {
+            Data = sortedNotifications,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalPages = totalPages
+        };
+    }
+
+
+
+    public async Task<int> GetUnreadNotificationsCountAsync(int currentUserId, CancellationToken cancellationToken = default)
+    {
+        long count = await _unitOfWork.Repository<Notification>()
+            .GetCountWithConditionAsync(n => n.UserId == currentUserId && !n.IsRead);
+        return (int)count;
+    }
+
+    public async Task MarkNotificationAsReadAsync(int currentUserId, int notificationId, CancellationToken cancellationToken = default)
+    {
+        var notification = await _unitOfWork.Repository<Notification>()
+            .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == currentUserId);
+
+        if (notification == null)
+            throw new ItemNotFound("Notification not found or you don't have permission to access it.");
+
+        if (notification.IsRead) return;
+
+        notification.IsRead = true;
+        await _unitOfWork.Repository<Notification>().UpdateEntityAsync(notification);
+        await _unitOfWork.CommitAsync(cancellationToken);
+    }
+
+    public async Task MarkAllNotificationsAsReadAsync(int currentUserId, CancellationToken cancellationToken = default)
+    {
+        // [الإصلاح النهائي] إصلاح خطأ Deconstruct. الدالة ترجع قائمة مباشرة.
+        var unreadNotifications = await _unitOfWork.Repository<Notification>()
+            .GetAllAsync(expression: n => n.UserId == currentUserId && !n.IsRead);
+
+        if (!unreadNotifications.Any()) return;
+
+        foreach (var notification in unreadNotifications)
+        {
             notification.IsRead = true;
-
-            var result = await _unitOfWork.CommitAsync(cancellationToken) > 0;
-            return result;
         }
-       
 
-        public async Task<bool> AddNotificationAsync(AddNotificationRequest request, CancellationToken cancellationToken = default)
+        await _unitOfWork.Repository<Notification>().UpdateRangeAsync(unreadNotifications);
+        await _unitOfWork.CommitAsync(cancellationToken);
+    }
+
+    public async Task<NotificationResponse?> GetNotificationByIdAsync(int currentUserId, int notificationId, CancellationToken cancellationToken = default)
+    {
+        var notification = await _unitOfWork.Repository<Notification>()
+            .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == currentUserId);
+
+        if (notification == null)
         {
-            var notification = new Notification
-            {
-                UserId = request.UserId,
-                Title = request.Title,
-                Message = request.Body, // تأكد من أن هذا يتطابق مع اسم الخاصية في Notification entity
-                IsRead = request.IsRead,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            await _unitOfWork.Repository<Notification>().AddEntityAsync(notification);
-            await _unitOfWork.CommitAsync();
-            return true;
+            return null;
         }
 
+        // استخدام الدالة المساعدة لتحويل النتيجة
+        return MapToNotificationResponse(notification);
+    }
+
+
+    public async Task DeleteNotificationAsync(int currentUserId, int notificationId, CancellationToken cancellationToken = default)
+    {
+        var notification = await _unitOfWork.Repository<Notification>()
+            .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == currentUserId);
+
+        if (notification == null)
+        {
+            throw new ItemNotFound("Notification not found or you don't have permission to delete it.");
+        }
+
+        // استخدام Soft Delete من الـ BaseEntity
+        notification.MarkAsDeleted(currentUserId);
+
+        await _unitOfWork.Repository<Notification>().UpdateEntityAsync(notification);
+        await _unitOfWork.CommitAsync(cancellationToken);
+    }
+
+    // [جديد] تنفيذ حذف كل الإشعارات
+    public async Task DeleteAllNotificationsAsync(int currentUserId, CancellationToken cancellationToken = default)
+    {
+        // جلب كل الإشعارات غير المحذوفة للمستخدم
+        var allNotifications = await _unitOfWork.Repository<Notification>()
+            .GetAllAsync(expression: n => n.UserId == currentUserId && !n.IsDeleted);
+
+        if (!allNotifications.Any())
+        {
+            // لا يوجد شيء لحذفه
+            return;
+        }
+
+        foreach (var notification in allNotifications)
+        {
+            // استخدام Soft Delete من الـ BaseEntity
+            notification.MarkAsDeleted(currentUserId);
+        }
+
+        await _unitOfWork.Repository<Notification>().UpdateRangeAsync(allNotifications);
+        await _unitOfWork.CommitAsync(cancellationToken);
+    }
+
+    private int GetCurrentUserId()
+    {
+        var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(userIdClaim, out var userId) ? userId : 0;
+    }
+
+
+    private NotificationResponse MapToNotificationResponse(Notification notification)
+    {
+        return new NotificationResponse
+        {
+            Id = notification.Id.ToString(),
+            UserId = notification.UserId,
+            Title = notification.Title,
+            Body = notification.Message,
+            IsRead = notification.IsRead,
+            CreatedAt = notification.CreatedAt
+        };
     }
 }

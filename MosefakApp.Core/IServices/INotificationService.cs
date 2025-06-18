@@ -2,10 +2,16 @@
 {
     public interface INotificationService
     {
-        Task<PaginatedResponse<NotificationResponse>> GetUserNotificationsAsync(int userId, int pageNumber, int pageSize, CancellationToken cancellationToken=default); // تم التعديل ليتوافق مع Notification.UserId
-        Task<NotificationResponse?> GetNotificationByIdAsync(int notificationId, CancellationToken cancellationToken = default); // تم التعديل ليتوافق مع Notification.Id
-        Task<bool> MarkNotificationAsReadAsync(int notificationId, int userId, CancellationToken cancellationToken = default); // تم التعديل ليتوافق مع Notification.Id و UserId
-        Task<bool> AddNotificationAsync(AddNotificationRequest request, CancellationToken cancellationToken = default);
+        Task SendAndSaveNotificationAsync(int recipientUserId, string title, string message, CancellationToken cancellationToken = default);
+        Task SendAndSaveBroadcastAsync(string title, string message, CancellationToken cancellationToken = default);
+        Task<PaginatedResponse<NotificationResponse>> GetMyNotificationsAsync(int currentUserId, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default);
+        Task<int> GetUnreadNotificationsCountAsync(int currentUserId, CancellationToken cancellationToken = default);
+        Task MarkNotificationAsReadAsync(int currentUserId, int notificationId, CancellationToken cancellationToken = default);
+        Task MarkAllNotificationsAsReadAsync(int currentUserId, CancellationToken cancellationToken = default);
+        Task<NotificationResponse?> GetNotificationByIdAsync(int currentUserId, int notificationId, CancellationToken cancellationToken = default);
+        Task DeleteNotificationAsync(int currentUserId, int notificationId, CancellationToken cancellationToken = default);
+        Task DeleteAllNotificationsAsync(int currentUserId, CancellationToken cancellationToken = default);
+
 
     }
 }

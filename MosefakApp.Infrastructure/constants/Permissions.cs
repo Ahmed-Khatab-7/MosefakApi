@@ -12,6 +12,7 @@
             public const string Edit = "Permissions.Users.Edit"; 
             public const string Delete = "Permissions.Users.Delete"; 
             public const string UnLock = "Permissions.Users.UnLock"; 
+
         }
 
         public static class Roles
@@ -128,6 +129,16 @@
             public const string Edit = "Permissions.Clinics.EditClinic";
             public const string Remove = "Permissions.Clinics.RemoveClinic";
         }
+
+        public static class Notifications
+        {
+            public const string View = "Permissions.Notifications.View";
+            public const string Delete = "Permissions.Notifications.Delete";
+            public const string MarkAsRead = "Permissions.Notifications.MarkAsRead";
+            public const string SendToSpecificUser = "Permissions.Notifications.SendToUser";
+            public const string SendBroadcast = "Permissions.Notifications.Broadcast";
+        }
+        
 
         public static class Reviews
         {
