@@ -54,7 +54,7 @@
 
         public async Task<List<ReviewResponse>> GetAllReviewsForDoctorDashboard(int doctorId)
         {
-            var reviews = await _unitOfWork.Repository<Review>().GetAllAsync(x => x.DoctorId == doctorId);
+            var reviews = await _unitOfWork.Repository<Review>().GetAllAsync(x => x.Doctor.AppUserId == doctorId);
             if (!reviews.Any()) return new List<ReviewResponse>(); // ✅ Return empty list instead of null
 
             // 🔹 Retrieve all users in a single query

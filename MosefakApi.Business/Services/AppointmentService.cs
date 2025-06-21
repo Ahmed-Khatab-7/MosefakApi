@@ -214,7 +214,7 @@ namespace MosefakApi.Business.Services
             var startOfDay = startDate.Date; // Converts to `2025-02-25T00:00:00`
             var endOfDay = startDate.Date.AddDays(1).AddTicks(-1); // Converts to `2025-02-25T23:59:59.999`
 
-            (var appointments,var totalCount) = await _unitOfWork.Repository<Appointment>()
+            (var appointments, var totalCount) = await _unitOfWork.Repository<Appointment>()
                 .GetAllAsync(
                     x => x.Doctor.AppUserId == doctorId &&
                          x.StartDate >= startOfDay && x.StartDate <= endOfDay, // ✅ Fixed filtering
@@ -749,7 +749,7 @@ namespace MosefakApi.Business.Services
 
         public async Task<AppointmentStatus> GetAppointmentStatus(int appointmentId)
         {
-            var appointment = await _unitOfWork.Repository<Appointment>().FirstOrDefaultAsync(x=> x.Id == appointmentId);
+            var appointment = await _unitOfWork.Repository<Appointment>().FirstOrDefaultAsync(x => x.Id == appointmentId);
 
             if (appointment == null)
                 throw new ItemNotFound("appointment does not exist");
@@ -930,7 +930,7 @@ namespace MosefakApi.Business.Services
         //}
 
 
-        private async Task<(IEnumerable<Appointment> appointments,int totalPages)> FetchPatientAppointments(int userId, AppointmentStatus? status, int pageNumber = 1, int pageSize = 10)
+        private async Task<(IEnumerable<Appointment> appointments, int totalPages)> FetchPatientAppointments(int userId, AppointmentStatus? status, int pageNumber = 1, int pageSize = 10)
         {
             (var items, var totalCount) = await _unitOfWork.Repository<Appointment>()
                 .GetAllAsync(
@@ -962,7 +962,7 @@ namespace MosefakApi.Business.Services
             return (items, totalPages);
         }
 
-        private async Task<Dictionary<int, DoctorDetails>> FetchDoctorDetails(List<int> doctorAppUserIds,CancellationToken cancellationToken)
+        private async Task<Dictionary<int, DoctorDetails>> FetchDoctorDetails(List<int> doctorAppUserIds, CancellationToken cancellationToken)
         {
             return await _userManager.Users
                 .Where(u => doctorAppUserIds.Contains(u.Id))
@@ -987,12 +987,12 @@ namespace MosefakApi.Business.Services
                     LastName = u.LastName ?? "Unknown",
                     ImagePath = u.ImagePath ?? string.Empty,
                     Email = u.Email ?? string.Empty,
-                    PhoneNumber = u.PhoneNumber?? string.Empty
+                    PhoneNumber = u.PhoneNumber ?? string.Empty
                 })
                 .ToDictionaryAsync(u => u.Id, cancellationToken);
         }
 
-       
+
         private string ProtectId(string id) => _Protector.Protect(int.Parse(id));
         private AppointmentResponse MapAppointmentResponse(Appointment appointment, Dictionary<int, DoctorDetails> doctorDetails)
         {

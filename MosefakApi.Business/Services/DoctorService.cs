@@ -547,7 +547,7 @@ namespace MosefakApi.Business.Services
             if (appointmentTypeId <= 0) throw new BadRequest("Invalid appointment type ID");
 
             // Get current UTC date and time
-            var currentUtcDateTime = DateTime.UtcNow; // 2025-06-10 10:11:37
+            var currentUtcDateTime = DateTime.Now; // 2025-06-10 10:11:37
             var currentTime = TimeOnly.FromDateTime(currentUtcDateTime);
             var isToday = currentUtcDateTime.DayOfWeek == selectedDay;
 
